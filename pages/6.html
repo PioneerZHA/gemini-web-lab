@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: BOREALIS // 774</title>
+    <style>
+        /* --- 核心基础设置 --- */
+        :root {
+            --bg-color: #050a0d;
+            --main-color: #a8dcd1; /* 磷光青 */
+            --dim-color: #4a5c58;
+            --accent-color: #ff3c00; /* 警报红 */
+            --scan-line-color: rgba(18, 16, 16, 0.5);
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; cursor: none; /* 隐藏默认光标 */ }
+        
+        body, html {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            background-color: var(--bg-color);
+            color: var(--main-color);
+            font-family: var(--font-main);
+            overflow: hidden;
+            font-size: 14px;
+            user-select: none;
+        }
+
+        /* --- CRT 屏幕效果容器 --- */
+        #screen {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, #091216 0%, #000000 100%);
+            overflow: hidden;
+        }
+
+        /* 扫描线与噪点 */
+        #screen::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 100;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* 屏幕微闪烁动画 */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            100% { opacity: 0.97; }
+        }
+        #crt-layer {
+            animation: flicker 0.15s infinite;
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; 
+            z-index: 99;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+        }
+
+        /* --- 自定义光标 --- */
+        #cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 20px; height: 20px;
+            border: 1px solid var(--main-color);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 1000;
+            transition: width 0.1s, height 0.1s;
+            mix-blend-mode: difference;
+        }
+        #cursor.active {
+            width: 40px; height: 40px;
+            background-color: rgba(168, 220, 209, 0.1);
+        }
+        #cursor::after {
+            content: ''; position: absolute;
+            top: 50%; left: 50%;
+            width: 2px; height: 2px;
+            background: var(--main-color);
+            transform: translate(-50%, -50%);
+        }
+
+        /* --- 布局网格 --- */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr 60px;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100%;
+            width: 100%;
+            padding: 20px;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* --- UI 元素 --- */
+        .border-box {
+            border: 1px solid var(--dim-color);
+            position: relative;
+            background: rgba(5, 10, 13, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        /* 顶部 Header */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 1px solid var(--dim-color);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .system-status {
+            font-size: 10px;
+            color: var(--dim-color);
+        }
+        .status-active { color: var(--main-color); }
+
+        /* 左侧导航 */
+        nav {
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 15px;
+            padding-right: 20px;
+        }
+
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--dim-color);
+            color: var(--dim-color);
+            padding: 15px;
+            text-align: right;
+            font-family: var(--font-main);
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
+            transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .nav-btn::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; height: 100%; width: 4px;
+            background: var(--accent-color);
+            transform: scaleY(0);
+            transition: transform 0.2s;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            color: var(--bg-color);
+            background: var(--main-color);
+            border-color: var(--main-color);
+            padding-right: 25px;
+        }
+        .nav-btn.active::before { transform: scaleY(1); }
+
+        /* 内容区域 */
+        main {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid var(--dim-color);
+            margin: 0 20px;
+        }
+
+        /* 内容层级切换 */
+        .content-layer {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px;
+        }
+        .content-layer.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* 右侧控制条 */
+        aside {
+            grid-column: 3;
+            grid-row: 2 / 3;
+            border-left: 1px solid var(--dim-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 0;
+        }
+
+        .lang-switch {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            font-size: 10px;
+            letter-spacing: 4px;
+            cursor: pointer;
+            padding: 10px;
+            border: 1px solid transparent;
+        }
+        .lang-switch:hover { border: 1px solid var(--main-color); }
+
+        /* 底部信息 */
+        footer {
+            grid-column: 1 / -1;
+            border-top: 1px solid var(--dim-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            font-size: 10px;
+            color: var(--dim-color);
+        }
+
+        /* --- 特殊视觉元素 --- */
+        .glitch-text {
+            position: relative;
+        }
+        .glitch-text::before, .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg-color);
+        }
+        .glitch-text::before {
+            left: 2px;
+            text-shadow: -1px 0 var(--accent-color);
+            clip: rect(24px, 550px, 90px, 0);
+            animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+        }
+        .glitch-text::after {
+            left: -2px;
+            text-shadow: -1px 0 #00ffff;
+            clip: rect(85px, 550px, 140px, 0);
+            animation: glitch-anim-2 3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip: rect(20px, 9999px, 10px, 0); }
+            100% { clip: rect(80px, 9999px, 90px, 0); }
+        }
+        @keyframes glitch-anim-2 {
+            0% { clip: rect(10px, 9999px, 80px, 0); }
+            100% { clip: rect(50px, 9999px, 20px, 0); }
+        }
+
+        h1 { font-size: 4rem; margin: 0; letter-spacing: -2px; font-weight: 400; text-transform: uppercase;}
+        h2 { font-size: 1.2rem; font-weight: 400; color: var(--accent-color); margin-bottom: 20px; }
+        p { max-width: 600px; line-height: 1.6; color: rgba(168, 220, 209, 0.8); }
+        
+        .data-block {
+            font-size: 10px;
+            border-left: 2px solid var(--dim-color);
+            padding-left: 10px;
+            margin-top: 20px;
+            font-family: monospace;
+            opacity: 0.7;
+        }
+
+        /* Canvas 背景 */
+        #bg-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        /* Loading Overlay */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 2000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 1s;
+        }
+        .loader-bar {
+            width: 200px; height: 2px;
+            background: var(--dim-color);
+            margin-top: 20px;
+            position: relative;
+        }
+        .loader-progress {
+            position: absolute;
+            left: 0; top: 0; height: 100%;
+            background: var(--main-color);
+            width: 0%;
+            transition: width 0.1s;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 开机加载层 -->
+    <div id="loader">
+        <div style="font-size: 12px; letter-spacing: 2px;">INITIALIZING PROTOCOL 774</div>
+        <div class="loader-bar"><div class="loader-progress" id="progress"></div></div>
+        <div id="loader-text" style="margin-top: 10px; font-size: 10px; color: var(--dim-color);">LOADING KERNEL...</div>
+    </div>
+
+    <div id="cursor"></div>
+
+    <div id="screen">
+        <div id="crt-layer"></div>
+        <canvas id="bg-canvas"></canvas>
+
+        <div class="layout-grid">
+            <header>
+                <div class="glitch-text" data-text="OBJECT: 774">OBJECT: 774</div>
+                <div class="system-status">
+                    LAT: 78.223 N / LON: 15.646 E<br>
+                    TEMP: -42.4°C <span class="status-active">[CRITICAL]</span>
+                </div>
+            </header>
+
+            <nav>
+                <button class="nav-btn active" data-target="overview" onmouseenter="playTick()">
+                    <span class="lang" data-en="01 // OVERVIEW" data-cn="01 // 概览">01 // OVERVIEW</span>
+                </button>
+                <button class="nav-btn" data-target="signal" onmouseenter="playTick()">
+                    <span class="lang" data-en="02 // THE SIGNAL" data-cn="02 // 信号源">02 // THE SIGNAL</span>
+                </button>
+                <button class="nav-btn" data-target="topography" onmouseenter="playTick()">
+                    <span class="lang" data-en="03 // TOPOGRAPHY" data-cn="03 // 地质结构">03 // TOPOGRAPHY</span>
+                </button>
+                <button class="nav-btn" data-target="archive" onmouseenter="playTick()">
+                    <span class="lang" data-en="04 // ARCHIVES" data-cn="04 // 档案库">04 // ARCHIVES</span>
+                </button>
+                <button class="nav-btn" data-target="system" onmouseenter="playTick()">
+                    <span class="lang" data-en="05 // SYSTEM" data-cn="05 // 系统内核">05 // SYSTEM</span>
+                </button>
+            </nav>
+
+            <main>
+                <!-- 01 概览 -->
+                <section id="overview" class="content-layer active">
+                    <h2 class="lang" data-en="FACILITY STATUS: DORMANT" data-cn="设施状态：休眠中">FACILITY STATUS: DORMANT</h2>
+                    <h1 class="glitch-text" data-text="BOREALIS" style="font-size: 6rem; opacity: 0.1; position: absolute; z-index: -1;">BOREALIS</h1>
+                    <p class="lang" data-en="The facility was not abandoned. It was sealed. We are listening to the echo of a mathematical impossibility buried beneath the ice." data-cn="这并非废弃设施，而是被封存的坟墓。我们正在监听冰层之下，那个在数学上本不应存在的、不可能的回响。">
+                        The facility was not abandoned. It was sealed. We are listening to the echo of a mathematical impossibility buried beneath the ice.
+                    </p>
+                    <div class="data-block">
+                        > DEPTH: 4,200M<br>
+                        > PRESSURE: CRITICAL<br>
+                        > ENTROPY: INCREASING
+                    </div>
+                </section>
+
+                <!-- 02 信号 -->
+                <section id="signal" class="content-layer">
+                    <!-- Canvas 会在这里绘制波形 -->
+                    <h2 class="lang" data-en="RESONANCE DETECTED" data-cn="检测到共振">RESONANCE DETECTED</h2>
+                    <p class="lang" data-en="The waveform does not repeat. It evolves. It suggests an intelligence governed by non-linear time." data-cn="波形没有重复。它在进化。这暗示着一种受非线性时间支配的智能形式。">
+                        The waveform does not repeat. It evolves.
+                    </p>
+                    <div style="width: 100%; height: 100px; border: 1px solid var(--dim-color); margin-top: 20px; position: relative; overflow: hidden;">
+                        <div id="waveform-viz" style="width: 200%; height: 100%; background: repeating-linear-gradient(90deg, transparent, transparent 2px, var(--main-color) 3px); opacity: 0.2; animation: scroll 5s linear infinite;"></div>
+                    </div>
+                </section>
+
+                <!-- 03 地形 -->
+                <section id="topography" class="content-layer">
+                    <h2 class="lang" data-en="GEOLOGICAL ANOMALY" data-cn="地质异常">GEOLOGICAL ANOMALY</h2>
+                    <div style="border: 1px dashed var(--main-color); padding: 20px; width: 300px; height: 300px; display: flex; align-items: center; justify-content: center; position: relative;">
+                        <div style="position: absolute; top: 10px; left: 10px; font-size: 10px;">SECTOR 7-G</div>
+                        <!-- 简单的纯CSS雷达动画 -->
+                        <div style="width: 200px; height: 200px; border-radius: 50%; border: 1px solid var(--dim-color); position: relative;">
+                            <div style="width: 50%; height: 50%; position: absolute; top: 50%; left: 50%; background: conic-gradient(from 0deg, transparent 0%, var(--main-color) 100%); border-radius: 100% 0 0 0; transform-origin: top left; animation: radar 2s infinite linear;"></div>
+                        </div>
+                    </div>
+                    <p class="lang" data-en="The ice is not melting. It is sublimating into data." data-cn="冰并没有融化。它正在升华为数据。">The ice is not melting. It is sublimating into data.</p>
+                </section>
+
+                <!-- 04 档案 -->
+                <section id="archive" class="content-layer">
+                    <h2 class="lang" data-en="FRAGMENTED LOGS" data-cn="碎片化日志">FRAGMENTED LOGS</h2>
+                    <div style="text-align: left; max-height: 400px; overflow-y: auto; width: 100%;">
+                        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--dim-color); padding-bottom: 10px;">
+                            <span style="color: var(--accent-color)">[DATE: 1982.11.04]</span><br>
+                            <span class="lang" data-en="Subject 04 exhibited signs of glossolalia. Claimed the geometry of the room was 'incorrect'." data-cn="受试者04表现出言语混乱的迹象。声称房间的几何结构是“错误”的。">Subject 04 exhibited signs of glossolalia. Claimed the geometry of the room was 'incorrect'.</span>
+                        </div>
+                        <div style="margin-bottom: 20px; border-bottom: 1px solid var(--dim-color); padding-bottom: 10px;">
+                            <span style="color: var(--accent-color)">[DATE: 1982.12.15]</span><br>
+                            <span class="lang" data-en="We have lost contact with the lower levels. The elevator returns empty, but the weight sensor indicates a load of 7000kg." data-cn="我们与下层失去了联系。电梯返回时是空的，但重量传感器显示负载为7000公斤。">We have lost contact with the lower levels. The elevator returns empty.</span>
+                        </div>
+                        <div style="opacity: 0.5;">
+                            <span style="color: var(--dim-color)">[DATA CORRUPTED]</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 05 系统 -->
+                <section id="system" class="content-layer">
+                    <h2 class="lang" data-en="KERNEL PANIC" data-cn="内核恐慌">KERNEL PANIC</h2>
+                    <p class="lang" data-en="Safety protocols overridden. The machine wants to run. Do not interrupt the calculation." data-cn="安全协议已被覆盖。机器渴望运行。切勿中断计算。">Safety protocols overridden.</p>
+                    <button style="background: var(--accent-color); color: #000; border: none; padding: 10px 30px; margin-top: 30px; font-family: monospace; font-weight: bold; cursor: none;" onmouseenter="playTick()">
+                        <span class="lang" data-en="INITIATE PURGE" data-cn="启动清洗程序">INITIATE PURGE</span>
+                    </button>
+                </section>
+            </main>
+
+            <aside>
+                <div style="width: 1px; height: 50px; background: var(--dim-color);"></div>
+                <div class="lang-switch" onclick="toggleLang()" id="lang-btn">EN / CN</div>
+                <div style="width: 1px; height: 50px; background: var(--dim-color);"></div>
+            </aside>
+
+            <footer>
+                <div>PROTOCOL: 77-B</div>
+                <div>CONNECTED: ADMIN</div>
+                <div>MEM: 64KB</div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. 初始化 & 加载动画 ---
+        window.onload = () => {
+            const progress = document.getElementById('progress');
+            const loader = document.getElementById('loader');
+            const loadText = document.getElementById('loader-text');
+            let width = 0;
+            
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    loader.style.opacity = 0;
+                    setTimeout(() => loader.remove(), 1000);
+                    initCanvas(); // 启动 Canvas
+                } else {
+                    width += Math.random() * 5;
+                    progress.style.width = width + '%';
+                    loadText.innerText = `LOADING MODULE... ${(Math.random()*1000).toFixed(0)}`;
+                }
+            }, 50);
+        };
+
+        // --- 2. 交互逻辑 (导航 & 语言) ---
+        let currentLang = 'en';
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const sections = document.querySelectorAll('.content-layer');
+        const cursor = document.getElementById('cursor');
+
+        // 鼠标跟随
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.top = e.clientY + 'px';
+            cursor.style.left = e.clientX + 'px';
+        });
+
+        // 链接Hover效果
+        document.querySelectorAll('button, .lang-switch').forEach(el => {
+            el.addEventListener('mouseenter', () => cursor.classList.add('active'));
+            el.addEventListener('mouseleave', () => cursor.classList.remove('active'));
+        });
+
+        // 导航切换
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // 移除旧状态
+                navBtns.forEach(b => b.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+                
+                // 添加新状态
+                btn.classList.add('active');
+                const targetId = btn.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+
+                // 触发故障特效
+                triggerGlitch();
+            });
+        });
+
+        // 语言切换
+        function toggleLang() {
+            currentLang = currentLang === 'en' ? 'cn' : 'en';
+            document.querySelectorAll('.lang').forEach(el => {
+                el.innerText = el.getAttribute(`data-${currentLang}`);
+            });
+            triggerGlitch();
+        }
+
+        // 模拟音效（视觉反馈代替音频，以防浏览器策略）
+        function playTick() {
+            // 在这里可以让光标闪烁一下
+            cursor.style.borderColor = 'var(--accent-color)';
+            setTimeout(() => cursor.style.borderColor = 'var(--main-color)', 100);
+        }
+
+        // 屏幕故障效果
+        function triggerGlitch() {
+            const screen = document.getElementById('screen');
+            screen.style.transform = `translateX(${Math.random()*10 - 5}px)`;
+            screen.style.filter = 'invert(1)';
+            setTimeout(() => {
+                screen.style.transform = 'translateX(0)';
+                screen.style.filter = 'none';
+            }, 50);
+        }
+
+        // --- 3. 极简风格 Canvas 背景 (粒子流/雪花/数据) ---
+        function initCanvas() {
+            const canvas = document.getElementById('bg-canvas');
+            const ctx = canvas.getContext('2d');
+            let width, height;
+            let particles = [];
+
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Particle {
+                constructor() {
+                    this.reset();
+                }
+                reset() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.vx = (Math.random() - 0.5) * 0.5; // 极慢的水平移动
+                    this.vy = (Math.random() - 0.5) * 0.5; // 极慢的垂直移动
+                    this.size = Math.random() * 1.5;
+                    this.alpha = Math.random() * 0.5;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+
+                    // 鼠标互动：斥力
+                    const dx = this.x - parseFloat(cursor.style.left || 0);
+                    const dy = this.y - parseFloat(cursor.style.top || 0);
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 100) {
+                        this.x += dx / dist * 2;
+                        this.y += dy / dist * 2;
+                    }
+
+                    if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+                        this.reset();
+                    }
+                }
+                draw() {
+                    ctx.fillStyle = `rgba(168, 220, 209, ${this.alpha})`;
+                    ctx.fillRect(this.x, this.y, this.size, this.size); // 使用矩形而非圆形，更符合像素风
+                }
+            }
+
+            // 初始化粒子
+            for(let i=0; i<150; i++) particles.push(new Particle());
+
+            // 绘制“数学网格”背景
+            function drawGrid() {
+                ctx.strokeStyle = 'rgba(74, 92, 88, 0.1)';
+                ctx.lineWidth = 1;
+                const gridSize = 100;
+                
+                // 随时间缓慢移动的网格
+                const offset = (Date.now() / 50) % gridSize;
+
+                ctx.beginPath();
+                for (let x = offset; x < width; x += gridSize) {
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                }
+                // 水平线加入正弦波扭曲，模拟磁场干扰
+                for (let y = 0; y < height; y += gridSize) {
+                    ctx.moveTo(0, y);
+                    for (let x = 0; x < width; x+=50) {
+                        ctx.lineTo(x, y + Math.sin(x/200 + Date.now()/1000)*5);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                
+                drawGrid();
+                
+                particles.forEach(p => {
+                    p.update();
+                    p.draw();
+                });
+
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // --- 4. 动画CSS辅助 ---
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes scroll {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+            }
+            @keyframes radar {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: KHOLOD | 这里的寂静震耳欲聋</title>
+    <style>
+        :root {
+            --bg-color: #05070a;
+            --main-color: #a8b5b2; /* 这种冷淡的灰白色 */
+            --accent-color: #ff3333; /* 警报红 */
+            --term-green: #4af626; /* 很少使用，仅作为高亮 */
+            --dim-color: #3b4d52;
+            --scan-line: rgba(0, 0, 0, 0.5);
+            --crt-flicker: rgba(255, 255, 255, 0.02);
+            --font-stack: 'Courier New', 'Courier', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            cursor: none; /* 隐藏默认光标 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--main-color);
+            font-family: var(--font-stack);
+            overflow: hidden; /* 禁止原生滚动 */
+            height: 100vh;
+            width: 100vw;
+            user-select: none;
+            text-transform: uppercase;
+        }
+
+        /* --- CRT Effect Layer --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            animation: flicker 0.15s infinite;
+        }
+        
+        .crt-overlay::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: radial-gradient(circle, rgba(0,0,0,0) 60%, rgba(0,0,0,0.6) 100%);
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            50% { opacity: 1; }
+            100% { opacity: 0.98; }
+        }
+
+        /* --- Custom Cursor --- */
+        #cursor {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--main-color);
+            pointer-events: none;
+            z-index: 1000;
+            transform: translate(-50%, -50%);
+            mix-blend-mode: difference;
+            transition: width 0.2s, height 0.2s;
+        }
+        #cursor.hovered {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(168, 181, 178, 0.1);
+            border-color: var(--accent-color);
+        }
+
+        /* --- Background Canvas --- */
+        #topo-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        /* --- UI Overlay --- */
+        .hud {
+            position: fixed;
+            z-index: 10;
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none; /* 允许点击穿透 */
+        }
+        
+        .hud-element {
+            pointer-events: auto;
+        }
+
+        .logo {
+            font-weight: 900;
+            letter-spacing: 0.2em;
+            font-size: 1.2rem;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 1rem;
+        }
+
+        .lang-switch {
+            font-size: 0.8rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .lang-opt {
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            position: relative;
+        }
+        
+        .lang-opt.active {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        .lang-opt:hover {
+            opacity: 1;
+        }
+
+        /* --- Main Content Container --- */
+        .viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* --- Sections --- */
+        .section {
+            position: absolute;
+            width: 80%;
+            max-width: 1000px;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95) translateZ(-50px);
+            transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: row;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .section.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1) translateZ(0);
+        }
+
+        .section.exiting {
+            opacity: 0;
+            transform: translateY(-50px) scale(1.05);
+            filter: blur(4px);
+        }
+
+        /* Layout within sections */
+        .content-left {
+            flex: 1;
+            border-right: 1px solid var(--dim-color);
+            padding-right: 2rem;
+            text-align: right;
+        }
+
+        .content-right {
+            flex: 2;
+        }
+
+        h1 {
+            font-size: 4rem;
+            line-height: 0.9;
+            margin-bottom: 1rem;
+            font-weight: normal;
+            letter-spacing: -2px;
+        }
+
+        h2 {
+            font-size: 0.9rem;
+            color: var(--dim-color);
+            margin-bottom: 2rem;
+            letter-spacing: 0.2em;
+        }
+
+        p {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            max-width: 600px;
+            margin-bottom: 1.5rem;
+            color: var(--main-color);
+            text-transform: none; /* 正文不强制大写，保持阅读性 */
+        }
+        
+        .data-block {
+            font-size: 0.7rem;
+            border: 1px solid var(--dim-color);
+            padding: 1rem;
+            display: inline-block;
+            margin-top: 1rem;
+            background: rgba(5, 7, 10, 0.8);
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            width: 200px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .data-val {
+            color: var(--accent-color);
+        }
+
+        /* --- Navigation Dots --- */
+        .nav-indicator {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 20;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background-color: var(--dim-color);
+            transition: all 0.3s;
+        }
+
+        .dot.active {
+            background-color: var(--accent-color);
+            height: 20px; /* 拉长变成条 */
+        }
+
+        /* --- Glitch Text Animation Class --- */
+        .glitch-text {
+            position: relative;
+        }
+
+        /* --- Interactive Elements --- */
+        .btn {
+            border: 1px solid var(--main-color);
+            padding: 1rem 2rem;
+            background: transparent;
+            color: var(--main-color);
+            font-family: var(--font-stack);
+            font-size: 1rem;
+            margin-top: 2rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::after {
+            content: '';
+            position: absolute;
+            width: 0%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background: var(--main-color);
+            z-index: -1;
+            transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .btn:hover {
+            color: var(--bg-color);
+        }
+        .btn:hover::after {
+            width: 100%;
+        }
+
+        /* Mobile warning */
+        @media (max-width: 768px) {
+            .section {
+                flex-direction: column;
+                text-align: left;
+                width: 90%;
+            }
+            .content-left {
+                border-right: none;
+                border-bottom: 1px solid var(--dim-color);
+                padding-right: 0;
+                padding-bottom: 1rem;
+                text-align: left;
+                width: 100%;
+            }
+            h1 { font-size: 2.5rem; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- CRT Visual Filter -->
+    <div class="crt-overlay"></div>
+    
+    <!-- Custom Cursor -->
+    <div id="cursor"></div>
+
+    <!-- Procedural Background -->
+    <canvas id="topo-canvas"></canvas>
+
+    <!-- HUD / Navigation -->
+    <nav class="hud">
+        <div class="logo hud-element" data-hover>
+            PROJ: KHOLOD<br>
+            <span style="font-size: 0.6em; color: var(--dim-color)">COORD: 78.22° N, 15.63° E</span>
+        </div>
+        <div class="lang-switch hud-element">
+            <span class="lang-opt active" data-lang="zh" data-hover>ZH</span>
+            <span class="lang-opt" data-lang="en" data-hover>EN</span>
+        </div>
+    </nav>
+
+    <div class="nav-indicator">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+
+    <!-- Main Viewport -->
+    <main class="viewport">
+
+        <!-- SECTION 1: CONCEPT / INTRO -->
+        <section class="section active" id="sec-0">
+            <div class="content-left">
+                <h2 class="decode-text">CASEFILE_001</h2>
+                <h1 class="decode-text">奇点<br>SINGULARITY</h1>
+            </div>
+            <div class="content-right">
+                <p data-key="sec1_desc">在北纬78度的永久冻土下，时间不再是线性流动的河流，而是冻结的湖泊。我们不是在探索未来，而是在挖掘被物理定律遗忘的过去。</p>
+                <div class="data-block">
+                    <div class="data-row"><span>ENTROPY</span><span class="data-val">STAGNANT</span></div>
+                    <div class="data-row"><span>YEAR</span><span class="data-val">198?</span></div>
+                    <div class="data-row"><span>STATUS</span><span class="data-val blinking">UNSTABLE</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: THE FACILITY -->
+        <section class="section" id="sec-1">
+            <div class="content-left">
+                <h2 class="decode-text">ARCHITECTURE</h2>
+                <h1 class="decode-text">设施<br>THE FACILITY</h1>
+            </div>
+            <div class="content-right">
+                <p data-key="sec2_desc">苏联第33号科学考察站“Kholod”。一座野兽派混凝土巨构，旨在利用地磁异常来捕获量子回响。它不仅是一个建筑，更是一台巨大的接收器。</p>
+                 <div class="data-block">
+                    <div class="data-row"><span>DEPTH</span><span class="data-val">-2400M</span></div>
+                    <div class="data-row"><span>INTEGRITY</span><span class="data-val">42%</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: THE ENTITY -->
+        <section class="section" id="sec-2">
+            <div class="content-left">
+                <h2 class="decode-text">OBSERVATION</h2>
+                <h1 class="decode-text">棱镜<br>PRISM</h1>
+            </div>
+            <div class="content-right">
+                <p data-key="sec3_desc">那个物体悬浮在反应堆核心。它不是生物，而是一个几何学悖论。任何试图描述它的语言都会导致观测者的认知崩溃。我们称之为“无声的喧嚣”。</p>
+                <p style="font-size:0.8rem; color:var(--accent-color);">[警告：视觉皮层干扰检测]</p>
+            </div>
+        </section>
+
+        <!-- SECTION 4: THE ARCHIVE -->
+        <section class="section" id="sec-3">
+            <div class="content-left">
+                <h2 class="decode-text">DATA_LOGS</h2>
+                <h1 class="decode-text">档案<br>ARCHIVE</h1>
+            </div>
+            <div class="content-right">
+                <div style="border-left: 2px solid var(--dim-color); padding-left: 1rem;">
+                    <p data-key="sec4_log1">>> Log 10.14: 温度计读数已停止在绝对零度，但水依然是液态。</p>
+                    <p data-key="sec4_log2">>> Log 11.02: 昨晚我看见了自己的尸体在走廊尽头向我敬礼。</p>
+                    <p data-key="sec4_log3">>> Log 12.25: 这里没有神。只有数学。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 5: PROTOCOL -->
+        <section class="section" id="sec-4">
+            <div class="content-left">
+                <h2 class="decode-text">ACTION</h2>
+                <h1 class="decode-text">协议<br>PROTOCOL</h1>
+            </div>
+            <div class="content-right">
+                <p data-key="sec5_desc">如果你能读到这段信息，说明隔离屏障已经失效。不要寻找幸存者。寻找数据的真理。</p>
+                <button class="btn hud-element" data-hover data-key="cta">初始化连接 // INITIATE</button>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // --- CONFIG & STATE ---
+        const config = {
+            lang: 'zh',
+            totalSections: 5,
+            currentSection: 0,
+            isAnimating: false,
+            wheelThreshold: 50
+        };
+
+        const translations = {
+            zh: {
+                sec1_desc: "在北纬78度的永久冻土下，时间不再是线性流动的河流，而是冻结的湖泊。我们不是在探索未来，而是在挖掘被物理定律遗忘的过去。",
+                sec2_desc: "苏联第33号科学考察站“Kholod”。一座野兽派混凝土巨构，旨在利用地磁异常来捕获量子回响。它不仅是一个建筑，更是一台巨大的接收器。",
+                sec3_desc: "那个物体悬浮在反应堆核心。它不是生物，而是一个几何学悖论。任何试图描述它的语言都会导致观测者的认知崩溃。我们称之为“无声的喧嚣”。",
+                sec4_log1: ">> Log 10.14: 温度计读数已停止在绝对零度，但水依然是液态。",
+                sec4_log2: ">> Log 11.02: 昨晚我看见了自己的尸体在走廊尽头向我敬礼。",
+                sec4_log3: ">> Log 12.25: 这里没有神。只有数学。",
+                sec5_desc: "如果你能读到这段信息，说明隔离屏障已经失效。不要寻找幸存者。寻找数据的真理。",
+                cta: "初始化连接 // INITIATE"
+            },
+            en: {
+                sec1_desc: "Beneath the permafrost at 78°N, time is no longer a flowing river, but a frozen lake. We are not exploring the future; we are excavating a past forgotten by physics.",
+                sec2_desc: "Soviet Scientific Station 33 'Kholod'. A Brutalist megastructure designed to harness geomagnetic anomalies to capture quantum echoes. Not just a building, but a receiver.",
+                sec3_desc: "The object suspended in the reactor core is not biological. It is a geometrical paradox. Any attempt to describe it causes cognitive collapse in the observer.",
+                sec4_log1: ">> Log 10.14: Thermometers stuck at absolute zero, yet water remains liquid.",
+                sec4_log2: ">> Log 11.02: Saw my own corpse saluting me at the end of the corridor last night.",
+                sec4_log3: ">> Log 12.25: No gods here. Only mathematics.",
+                sec5_desc: "If you are reading this, the containment barrier has failed. Do not look for survivors. Look for the truth in the data.",
+                cta: "INITIATE SEQUENCE"
+            }
+        };
+
+        // --- UTILS ---
+        const randomChar = () => {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/\\#%&<>";
+            return chars[Math.floor(Math.random() * chars.length)];
+        };
+
+        // --- TEXT DECODER EFFECT ---
+        class TextScramble {
+            constructor(el) {
+                this.el = el;
+                this.chars = '!<>-_\\/[]{}—=+*^?#________';
+                this.update = this.update.bind(this);
+            }
+            setText(newText) {
+                const oldText = this.el.innerText;
+                const length = Math.max(oldText.length, newText.length);
+                const promise = new Promise((resolve) => this.resolve = resolve);
+                this.queue = [];
+                for (let i = 0; i < length; i++) {
+                    const from = oldText[i] || '';
+                    const to = newText[i] || '';
+                    const start = Math.floor(Math.random() * 40);
+                    const end = start + Math.floor(Math.random() * 40);
+                    this.queue.push({ from, to, start, end });
+                }
+                cancelAnimationFrame(this.frameRequest);
+                this.frame = 0;
+                this.update();
+                return promise;
+            }
+            update() {
+                let output = '';
+                let complete = 0;
+                for (let i = 0, n = this.queue.length; i < n; i++) {
+                    let { from, to, start, end, char } = this.queue[i];
+                    if (this.frame >= end) {
+                        complete++;
+                        output += to;
+                    } else if (this.frame >= start) {
+                        if (!char || Math.random() < 0.28) {
+                            char = this.randomChar();
+                            this.queue[i].char = char;
+                        }
+                        output += `<span style="opacity:0.5">${char}</span>`;
+                    } else {
+                        output += from;
+                    }
+                }
+                this.el.innerHTML = output;
+                if (complete === this.queue.length) {
+                    this.resolve();
+                } else {
+                    this.frameRequest = requestAnimationFrame(this.update);
+                    this.frame++;
+                }
+            }
+            randomChar() {
+                return this.chars[Math.floor(Math.random() * this.chars.length)];
+            }
+        }
+
+        // --- BACKGROUND CANVAS ANIMATION (RADAR / NOISE) ---
+        const initCanvas = () => {
+            const canvas = document.getElementById('topo-canvas');
+            const ctx = canvas.getContext('2d');
+            let width, height;
+            let time = 0;
+
+            const resize = () => {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            };
+            window.addEventListener('resize', resize);
+            resize();
+
+            // Draw a spinning radar / topographic line effect
+            const draw = () => {
+                ctx.clearRect(0, 0, width, height);
+                ctx.fillStyle = '#a8b5b2';
+                
+                // Static Noise
+                for(let i=0; i<100; i++) {
+                    ctx.fillRect(Math.random()*width, Math.random()*height, 1, 1);
+                }
+
+                // Rotating Scanner
+                ctx.save();
+                ctx.translate(width/2, height/2);
+                ctx.rotate(time * 0.005);
+                
+                ctx.strokeStyle = 'rgba(168, 181, 178, 0.1)';
+                ctx.lineWidth = 1;
+                
+                // Concentric circles
+                for(let i=1; i<5; i++) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, i * 150 + Math.sin(time*0.01)*20, 0, Math.PI * 2);
+                    if (Math.random() > 0.95) ctx.stroke(); // Flicker effect
+                }
+
+                // Scan line
+                ctx.beginPath();
+                ctx.moveTo(0,0);
+                ctx.lineTo(1000, 0);
+                ctx.strokeStyle = 'rgba(255, 51, 51, 0.2)'; // Red scan
+                ctx.stroke();
+
+                ctx.restore();
+
+                // 3D Wireframe-ish Grid Floor
+                ctx.save();
+                ctx.strokeStyle = 'rgba(59, 77, 82, 0.3)';
+                ctx.beginPath();
+                const horizon = height * 0.6;
+                const gridSize = 50;
+                let offset = (time * 20) % gridSize;
+                
+                for(let x = 0; x < width; x+=gridSize) {
+                    ctx.moveTo(x, horizon);
+                    ctx.lineTo(x - (width/2 - x)*2, height);
+                }
+                for(let y = horizon; y < height; y+=gridSize) {
+                    ctx.moveTo(0, y + offset);
+                    ctx.lineTo(width, y + offset);
+                }
+                ctx.stroke();
+                ctx.restore();
+
+                time++;
+                requestAnimationFrame(draw);
+            };
+            draw();
+        };
+
+        // --- NAVIGATION LOGIC ---
+        const switchSection = (index) => {
+            if (index < 0 || index >= config.totalSections || config.isAnimating) return;
+            
+            config.isAnimating = true;
+            
+            // Current Section Exit
+            const currentEl = document.getElementById(`sec-${config.currentSection}`);
+            currentEl.classList.add('exiting');
+            currentEl.classList.remove('active');
+
+            // Dots Update
+            const dots = document.querySelectorAll('.dot');
+            dots.forEach(d => d.classList.remove('active'));
+            dots[index].classList.add('active');
+
+            // Wait for exit anim, then enter new
+            setTimeout(() => {
+                currentEl.classList.remove('exiting');
+                config.currentSection = index;
+                
+                const nextEl = document.getElementById(`sec-${config.currentSection}`);
+                nextEl.classList.add('active');
+
+                // Trigger Text Decoders on new section
+                const decoders = nextEl.querySelectorAll('.decode-text');
+                decoders.forEach(el => {
+                    if(!el.scrambler) el.scrambler = new TextScramble(el);
+                    el.scrambler.setText(el.innerText);
+                });
+
+                config.isAnimating = false;
+            }, 800);
+        };
+
+        // --- INPUT HANDLING ---
+        const initInputs = () => {
+            // Scroll / Wheel
+            let wheelAccumulator = 0;
+            window.addEventListener('wheel', (e) => {
+                wheelAccumulator += e.deltaY;
+                if (Math.abs(wheelAccumulator) > config.wheelThreshold) {
+                    if (wheelAccumulator > 0) switchSection(config.currentSection + 1);
+                    else switchSection(config.currentSection - 1);
+                    wheelAccumulator = 0;
+                }
+            });
+
+            // Touch
+            let touchStartY = 0;
+            window.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY);
+            window.addEventListener('touchend', e => {
+                const diff = touchStartY - e.changedTouches[0].clientY;
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) switchSection(config.currentSection + 1);
+                    else switchSection(config.currentSection - 1);
+                }
+            });
+
+            // Click on dots
+            document.querySelectorAll('.dot').forEach((dot, idx) => {
+                dot.addEventListener('click', () => switchSection(idx));
+            });
+
+            // Language Switch
+            document.querySelectorAll('.lang-opt').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    const lang = e.target.dataset.lang;
+                    setLanguage(lang);
+                });
+            });
+
+            // Custom Cursor
+            const cursor = document.getElementById('cursor');
+            document.addEventListener('mousemove', e => {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+            });
+
+            document.querySelectorAll('[data-hover]').forEach(el => {
+                el.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+                el.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+            });
+        };
+
+        // --- LOCALIZATION ---
+        const setLanguage = (lang) => {
+            config.lang = lang;
+            
+            // UI Toggle
+            document.querySelectorAll('.lang-opt').forEach(el => {
+                el.classList.toggle('active', el.dataset.lang === lang);
+            });
+
+            // Content Text Update with Glitch
+            const elements = document.querySelectorAll('[data-key]');
+            elements.forEach(el => {
+                const key = el.dataset.key;
+                if (translations[lang][key]) {
+                    // Simple fade swap or scramble if it's a header
+                    el.style.opacity = 0;
+                    setTimeout(() => {
+                        el.innerText = translations[lang][key];
+                        el.style.opacity = 1;
+                    }, 200);
+                }
+            });
+        };
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            initCanvas();
+            initInputs();
+            
+            // Init Scramble for first section
+            const firstSec = document.getElementById('sec-0');
+            firstSec.querySelectorAll('.decode-text').forEach(el => {
+                el.scrambler = new TextScramble(el);
+                el.scrambler.setText(el.innerText);
+            });
+
+            console.log("SYSTEM: KHOLOD_OS BOOT SEQUENCE COMPLETE.");
+            console.log("WARNING: MEMETIC HAZARDS DETECTED.");
+        };
+
+    </script>
+</body>
+</html>

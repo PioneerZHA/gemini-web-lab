@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ОБЪЕКТ-7 // PROJECT SIGNAL</title>
+    <style>
+        /* --- 字体引入 --- */
+        @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&family=Noto+Serif+SC:wght@500;700&display=swap');
+
+        :root {
+            --phosphor-main: #ffb84d; /* 琥珀色 */
+            --phosphor-dim: #966723;
+            --phosphor-bright: #ffeebb;
+            --bg-color: #0d0b00;
+            --scan-line-color: rgba(18, 16, 16, 0.5);
+        }
+
+        * {
+            box-sizing: border-box;
+            cursor: none; /* 全局隐藏系统光标 */
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--phosphor-main);
+            font-family: 'Share Tech Mono', 'Noto Serif SC', monospace;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            text-transform: uppercase;
+        }
+
+        /* --- 视觉层：CRT 效果 --- */
+        #crt-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 900;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255,0,0,0.06), rgba(0,255,0,0.02), rgba(0,0,255,0.06));
+            background-size: 100% 2px, 3px 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            animation: flicker 0.15s infinite;
+        }
+
+        /* --- 自定义光标 --- */
+        #cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 20px;
+            height: 20px;
+            border: 1px solid var(--phosphor-main);
+            /* 初始状态隐藏，避免JS加载前出现在左上角 */
+            opacity: 0; 
+            transform: translate(-50%, -50%) rotate(45deg);
+            pointer-events: none;
+            z-index: 1000;
+            mix-blend-mode: difference;
+            transition: width 0.2s, height 0.2s, background-color 0.2s, opacity 0.5s;
+            will-change: transform, top, left;
+        }
+        
+        #cursor::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 2px; height: 2px;
+            background: var(--phosphor-main);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px 2px var(--phosphor-main);
+        }
+
+        #cursor.hover-active {
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255, 184, 77, 0.1);
+            transform: translate(-50%, -50%) rotate(0deg);
+            border-style: dashed;
+        }
+
+        /* --- 布局结构 --- */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr 280px;
+            grid-template-rows: 80px 1fr 60px;
+            height: 100vh;
+            padding: 2rem;
+            opacity: 0; 
+            transition: opacity 1s ease-out;
+            position: relative;
+            z-index: 10;
+        }
+
+        .border-box {
+            border: 1px solid var(--phosphor-dim);
+            padding: 1rem;
+            position: relative;
+            background: rgba(10, 8, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .border-box::before, .border-box::after {
+            content: ''; position: absolute; width: 6px; height: 6px;
+            border: 2px solid var(--phosphor-main);
+        }
+        .border-box::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .border-box::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid var(--phosphor-dim);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-family: 'VT323', monospace;
+            font-size: 3rem;
+            margin: 0;
+            text-shadow: 0 0 10px var(--phosphor-main);
+            letter-spacing: 5px;
+            line-height: 1;
+        }
+
+        .lang-switch {
+            font-size: 1rem;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .lang-btn {
+            border: 1px solid var(--phosphor-dim);
+            padding: 2px 10px;
+            color: var(--phosphor-dim);
+            transition: all 0.3s;
+        }
+
+        .interactive {
+            pointer-events: auto; /* 确保交互元素能接收事件 */
+        }
+        
+        .interactive:hover {
+            color: var(--phosphor-main);
+            border-color: var(--phosphor-main);
+            background: rgba(255, 184, 77, 0.1);
+            text-shadow: 0 0 8px var(--phosphor-main);
+        }
+
+        .lang-btn.active {
+            color: var(--bg-color);
+            background: var(--phosphor-main);
+            border-color: var(--phosphor-main);
+            font-weight: bold;
+        }
+
+        main {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        canvas#oscilloscope {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1;
+        }
+
+        .central-text {
+            z-index: 2;
+            text-align: center;
+            mix-blend-mode: plus-lighter;
+            pointer-events: none; 
+        }
+
+        .hero-title {
+            font-size: 4vw;
+            opacity: 0.8;
+            letter-spacing: 0.5vw;
+            animation: textBreath 4s infinite ease-in-out;
+        }
+
+        aside {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--phosphor-dim);
+        }
+
+        .log-entry {
+            margin-bottom: 1rem;
+            border-left: 2px solid transparent;
+            padding-left: 8px;
+            transition: 0.3s;
+        }
+        .log-entry:hover {
+            border-left-color: var(--phosphor-main);
+            color: var(--phosphor-main);
+        }
+
+        footer {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            border-top: 1px dashed var(--phosphor-dim);
+            padding-top: 15px;
+            font-size: 0.8rem;
+        }
+
+        #boot-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 950;
+            display: flex;
+            flex-direction: column;
+            padding: 40px;
+            font-family: 'VT323', monospace;
+            font-size: 1.2rem;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.95; } 50% { opacity: 0.92; } 100% { opacity: 0.96; }
+        }
+        @keyframes textBreath {
+            0%, 100% { text-shadow: 0 0 10px var(--phosphor-dim); opacity: 0.6; }
+            50% { text-shadow: 0 0 25px var(--phosphor-main); opacity: 1; }
+        }
+
+        .scan-bar {
+            width: 100%; height: 10px;
+            background: rgba(255, 184, 77, 0.1);
+            position: absolute; z-index: 901; top: 0;
+            animation: scanline 6s linear infinite;
+            pointer-events: none; opacity: 0.3;
+        }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+
+        @media (max-width: 1000px) {
+            .grid-layout { grid-template-columns: 1fr; grid-template-rows: auto 200px 1fr auto; padding: 1rem; }
+            aside { display: none; }
+            /* 移动端让第二个 aside (参数) 显示在下方 */
+            aside:last-of-type { display: flex; grid-row: 3; text-align: left; }
+            .hero-title { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="crt-overlay"></div>
+    <div class="scan-bar"></div>
+    <div id="cursor"></div>
+
+    <!-- 启动画面 -->
+    <div id="boot-screen">
+        <div id="boot-log"></div>
+    </div>
+
+    <div class="grid-layout" id="main-interface">
+        <header>
+            <div class="logo-area">
+                <h1>ОБЪЕКТ-7</h1>
+                <span style="font-size: 0.8rem; letter-spacing: 2px;">SOVIET DEEP SPACE ARRAY</span>
+            </div>
+            
+            <div class="lang-switch">
+                <!-- 移除了 onclick 属性，改用 addEventListener -->
+                <div class="lang-btn interactive active" id="btn-en" data-target-lang="en">EN</div>
+                <span>/</span>
+                <div class="lang-btn interactive" id="btn-cn" data-target-lang="cn">中文</div>
+            </div>
+        </header>
+
+        <aside class="border-box">
+            <div style="margin-bottom: 10px; text-decoration: underline;" data-lang="log-title">LOG: ACTIVITY</div>
+            <div class="log-entry" data-lang="log-1">
+                > [ERR] SEGMENT 4B CORRUPTED<br>> ATTEMPTING RECOVERY...
+            </div>
+            <div class="log-entry" data-lang="log-2">
+                > SIGNAL DETECTED: 1420 MHz<br>> ORIGIN: UNKNOWN SECTOR
+            </div>
+            <div class="log-entry" data-lang="log-3">
+                > BIOMETRICS: UNSTABLE<br>> PSY-EMISSION: ELEVATED
+            </div>
+        </aside>
+
+        <main class="border-box" style="border: none; position: relative;">
+            <canvas id="oscilloscope"></canvas>
+            <div class="central-text">
+                <div class="hero-title" data-lang="hero-title">LISTEN</div>
+                <div style="font-size: 0.8rem; margin-top: 1rem; color: var(--phosphor-dim);" data-lang="hero-sub">
+                    [ MOVE CURSOR TO INTERFERE ]
+                </div>
+            </div>
+        </main>
+
+        <aside class="border-box" style="text-align: right;">
+            <div style="margin-bottom: 10px; text-decoration: underline;" data-lang="status-title">MODULE STATUS</div>
+            <div style="margin-top: 20px;">
+                FREQ: <span id="val-freq">00.00</span> Hz<br>
+                AMP: <span id="val-amp">00.00</span> dB<br>
+                NOISE: <span id="val-noise">LOW</span>
+            </div>
+            <div style="margin-top: 40px;">
+                <div style="border: 1px solid var(--phosphor-dim); padding: 5px; display: inline-block;">
+                    <div style="font-size: 0.7rem;" data-lang="key-title">DECRYPTION KEY</div>
+                    <div id="cipher-text" style="font-size: 1.2rem; letter-spacing: 3px;">88-XJ-21</div>
+                </div>
+            </div>
+        </aside>
+
+        <footer>
+            <span>GAIN: 80%</span>
+            <div style="flex-grow: 1;"></div>
+            <span class="interactive" data-lang="footer-msg">// PRESS ANY KEY TO INITIALIZE PROTOCOL</span>
+        </footer>
+    </div>
+
+    <script>
+        // --- 1. 语言库与切换逻辑 ---
+        const i18n = {
+            en: {
+                "log-title": "LOG: ACTIVITY",
+                "log-1": "> [ERR] SEGMENT 4B CORRUPTED<br>> ATTEMPTING RECOVERY...",
+                "log-2": "> SIGNAL DETECTED: 1420 MHz<br>> ORIGIN: UNKNOWN SECTOR",
+                "log-3": "> BIOMETRICS: UNSTABLE<br>> PSY-EMISSION: ELEVATED",
+                "hero-title": "LISTEN",
+                "hero-sub": "[ MOVE CURSOR TO INTERFERE ]",
+                "status-title": "MODULE STATUS",
+                "key-title": "DECRYPTION KEY",
+                "footer-msg": "// PRESS ANY KEY TO INITIALIZE PROTOCOL"
+            },
+            cn: {
+                "log-title": "日志: 活动记录",
+                "log-1": "> [错误] 数据段 4B 已损坏<br>> 正在尝试恢复...",
+                "log-2": "> 侦测到信号: 1420 MHz<br>> 来源: 未知扇区",
+                "log-3": "> 生物指标: 不稳定<br>> 精神辐射: 升高",
+                "hero-title": "监听",
+                "hero-sub": "[ 移动光标以干扰信号 ]",
+                "status-title": "模组状态",
+                "key-title": "解密密钥",
+                "footer-msg": "// 按下任意键初始化协议"
+            }
+        };
+
+        const randomChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#%&@$*абвгдежзийклмноп";
+        
+        // 修复：使用 Map 存储每个元素的定时器 ID，防止冲突
+        const animationIntervals = new Map();
+
+        function setLanguage(lang) {
+            // UI 更新
+            document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-${lang}`).classList.add('active');
+
+            const elements = document.querySelectorAll('[data-lang]');
+            
+            elements.forEach(el => {
+                const key = el.getAttribute('data-lang');
+                const targetText = i18n[lang][key];
+                
+                // 关键修复：如果该元素正在进行动画，先清除它
+                if (animationIntervals.has(el)) {
+                    clearInterval(animationIntervals.get(el));
+                }
+
+                let iteration = 0;
+                const interval = setInterval(() => {
+                    el.innerHTML = targetText
+                        .split("")
+                        .map((letter, index) => {
+                            if (index < iteration) return letter;
+                            return randomChars[Math.floor(Math.random() * randomChars.length)];
+                        })
+                        .join("");
+                    
+                    if (iteration >= targetText.length) {
+                        clearInterval(interval);
+                        animationIntervals.delete(el); // 动画结束，移除记录
+                    }
+                    iteration += 1 / 2;
+                }, 30);
+
+                // 记录新的定时器
+                animationIntervals.set(el, interval);
+            });
+        }
+
+        // 绑定语言切换点击事件
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                setLanguage(e.target.dataset.targetLang);
+            });
+        });
+
+        // --- 2. 光标逻辑 (优化版) ---
+        const cursor = document.getElementById('cursor');
+        // 初始化在中心，避免左上角闪烁
+        let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+        let cursorX = mouseX, cursorY = mouseY;
+        let isCursorVisible = false;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            if (!isCursorVisible) {
+                cursor.style.opacity = 1;
+                isCursorVisible = true;
+            }
+        });
+
+        // 绑定交互效果
+        function bindInteractiveHover() {
+            const interactives = document.querySelectorAll('.interactive');
+            interactives.forEach(el => {
+                el.addEventListener('mouseenter', () => cursor.classList.add('hover-active'));
+                el.addEventListener('mouseleave', () => cursor.classList.remove('hover-active'));
+            });
+        }
+        bindInteractiveHover();
+
+        function updateCursor() {
+            // 缓动算法
+            const dx = mouseX - cursorX;
+            const dy = mouseY - cursorY;
+            
+            cursorX += dx * 0.15; // 稍微降低延迟，更跟手
+            cursorY += dy * 0.15;
+            
+            cursor.style.left = `${cursorX}px`;
+            cursor.style.top = `${cursorY}px`;
+            
+            requestAnimationFrame(updateCursor);
+            
+            // 只有当 canvas 可见时才计算干扰，节省性能
+            if(document.getElementById('main-interface').style.opacity > 0) {
+                updateOscilloscopePhysics(cursorX, cursorY);
+            }
+        }
+        updateCursor();
+
+        // --- 3. 示波器与物理引擎 (修复尺寸问题) ---
+        const canvas = document.getElementById('oscilloscope');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let time = 0;
+        let interference = 0;
+        
+        let waves = [];
+        for(let i=0; i<4; i++) {
+            waves.push({
+                freq: 0.01 + Math.random() * 0.02,
+                amp: 40 + Math.random() * 40,
+                speed: 0.05 + Math.random() * 0.05,
+                offset: Math.random() * Math.PI * 2
+            });
+        }
+
+        function resize() {
+            // 关键修复：确保父容器有尺寸
+            const parent = canvas.parentElement;
+            if (parent && parent.offsetWidth > 0) {
+                width = parent.offsetWidth;
+                height = parent.offsetHeight;
+                canvas.width = width;
+                canvas.height = height;
+            }
+        }
+        window.addEventListener('resize', resize);
+
+        function updateOscilloscopePhysics(mx, my) {
+            // 安全检查：如果 canvas 还没准备好，跳过
+            if (!width || !height) return;
+
+            const rect = canvas.getBoundingClientRect();
+            // 修复：当 rect 隐藏时跳过计算
+            if (rect.width === 0) return;
+
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            
+            const dist = Math.sqrt((mx - cx)**2 + (my - cy)**2);
+            const maxRange = Math.min(width, height) / 1.5 + 200; 
+            
+            // 计算干扰强度
+            interference = Math.max(0, 1 - (dist / maxRange));
+            
+            // UI 数值更新
+            document.getElementById('val-freq').innerText = (1420 + interference * 150).toFixed(2);
+            document.getElementById('val-amp').innerText = (-40 + interference * 30).toFixed(2);
+            document.getElementById('val-noise').innerText = interference > 0.6 ? "CRITICAL" : (interference > 0.3 ? "HIGH" : "LOW");
+        }
+
+        function draw() {
+            if (!width || !height) {
+                requestAnimationFrame(draw);
+                return;
+            }
+
+            ctx.clearRect(0, 0, width, height);
+            
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#ffb84d';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ffb84d';
+            
+            ctx.beginPath();
+            
+            // 优化：根据干扰程度改变采样率，干扰越大线条越抖
+            const step = interference > 0.5 ? 2 : 3;
+
+            for(let x = 0; x < width; x += step) {
+                let y = height / 2;
+                
+                waves.forEach(w => {
+                    y += Math.sin(x * w.freq + time * w.speed + w.offset) * w.amp;
+                });
+
+                if(interference > 0.01) {
+                    y += (Math.random() - 0.5) * 50 * interference;
+                    y += Math.sin(x * 0.1 * interference) * 20 * interference;
+                }
+                
+                if(interference > 0.7 && Math.random() > 0.9) {
+                    y += (Math.random() - 0.5) * 200;
+                }
+
+                if(x===0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            time += 0.05 + interference * 0.2;
+            requestAnimationFrame(draw);
+        }
+
+        // --- 4. 启动流程与初始化 ---
+        const bootLog = document.getElementById('boot-log');
+        const bootText = [
+            "SYSTEM BOOT SEQUENCE...",
+            "LOADING KERNEL: MOSCOW-8...",
+            "CHECKING RAM... 64KB OK",
+            "MOUNTING TAPE DRIVES...",
+            "INITIALIZING LANGUAGE MODULES...",
+            "ESTABLISHING UPLINK...",
+            "ACCESS GRANTED."
+        ];
+        let lineIdx = 0;
+
+        function runBoot() {
+            if (lineIdx < bootText.length) {
+                const div = document.createElement('div');
+                div.textContent = "> " + bootText[lineIdx];
+                bootLog.appendChild(div);
+                lineIdx++;
+                // 随机延迟增加真实感
+                setTimeout(runBoot, 100 + Math.random() * 300);
+            } else {
+                finishBoot();
+            }
+        }
+
+        function finishBoot() {
+            setTimeout(() => {
+                const bootScreen = document.getElementById('boot-screen');
+                const mainInterface = document.getElementById('main-interface');
+                
+                bootScreen.style.opacity = 0;
+                mainInterface.style.opacity = 1;
+
+                // 关键修复：先触发 resize 确保 canvas 尺寸正确，再开始 draw
+                resize();
+                requestAnimationFrame(draw);
+
+                setTimeout(() => {
+                    bootScreen.style.display = 'none';
+                }, 1000);
+            }, 500);
+        }
+        
+        window.onload = runBoot;
+
+        // 密钥闪烁逻辑
+        setInterval(() => {
+            const el = document.getElementById('cipher-text');
+            // 只有当干扰足够大时才变红乱码
+            if(interference > 0.4) {
+                el.innerText = Math.floor(Math.random()*99) + "-ERR-" + Math.floor(Math.random()*99);
+                el.style.color = "#ff5555";
+                el.style.borderColor = "#ff5555";
+            } else {
+                el.innerText = "88-XJ-21";
+                el.style.color = "var(--phosphor-main)";
+                el.style.borderColor = "var(--phosphor-dim)";
+            }
+        }, 100);
+
+// --- 5. 新增：协议初始化逻辑 (Protocol Initialization) ---
+        
+        // 标记是否已经启动过协议
+        let protocolActive = false;
+
+        // 定义协议启动函数
+        function triggerProtocol() {
+            // 如果正在启动界面，或者协议已经启动，则忽略
+            if (document.getElementById('boot-screen').style.opacity > 0 || protocolActive) return;
+            
+            protocolActive = true;
+            
+            // 1. 改变整提色调为“红色警戒”
+            document.documentElement.style.setProperty('--phosphor-main', '#ff3333');
+            document.documentElement.style.setProperty('--phosphor-dim', '#550000');
+            document.body.style.textShadow = "0 0 5px #ff0000";
+
+            // 2. 创建并显示弹窗
+            const modal = document.createElement('div');
+            modal.id = 'secret-modal';
+            Object.assign(modal.style, {
+                position: 'fixed',
+                top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: 'min(600px, 90vw)',
+                height: '400px',
+                border: '2px solid #ff3333',
+                background: 'rgba(0,0,0,0.9)',
+                zIndex: '2000',
+                padding: '20px',
+                fontFamily: "'Courier New', monospace",
+                boxShadow: "0 0 50px rgba(255, 0, 0, 0.5)",
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center'
+            });
+
+            // 弹窗内容容器
+            const content = document.createElement('div');
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+
+            // 3. 播放解密动画
+            const secretMessages = [
+                "INITIATING PROTOCOL 7...",
+                "BYPASSING FIREWALL...",
+                "ACCESSING ARCHIVES...",
+                "DECRYPTING: TOP SECRET...",
+                "--------------------------",
+                "TARGET: [REDACTED]",
+                "LOCATION: SECTOR-9",
+                "STATUS: AWAKE",
+                "--------------------------",
+                "WARNING: DO NOT TURN OFF"
+            ];
+
+            let msgIndex = 0;
+            
+            function typeLine() {
+                if (msgIndex < secretMessages.length) {
+                    content.innerHTML += `<div style="margin: 5px 0; opacity: 0; animation: fadeIn 0.2s forwards;">${secretMessages[msgIndex]}</div>`;
+                    
+                    // 自动滚动到底部
+                    // content.scrollTop = content.scrollHeight; 
+                    
+                    msgIndex++;
+                    // 随机打字速度
+                    setTimeout(typeLine, 100 + Math.random() * 300);
+                } else {
+                    // 结束时显示一个大按钮
+                    const btn = document.createElement('button');
+                    btn.innerText = "TERMINATE CONNECTION";
+                    Object.assign(btn.style, {
+                        marginTop: '20px',
+                        background: '#ff3333',
+                        color: 'black',
+                        border: 'none',
+                        padding: '10px 20px',
+                        fontFamily: 'inherit',
+                        fontWeight: 'bold',
+                        cursor: 'none', // 保持无光标风格
+                        animation: 'flicker 0.5s infinite'
+                    });
+                    
+                    // 按钮交互
+                    btn.addEventListener('mouseenter', () => cursor.classList.add('hover-active'));
+                    btn.addEventListener('mouseleave', () => cursor.classList.remove('hover-active'));
+                    btn.addEventListener('click', () => {
+                        location.reload(); // 点击刷新页面重置
+                    });
+                    
+                    content.appendChild(btn);
+                }
+            }
+            
+            typeLine();
+        }
+
+        // 添加键盘监听
+        document.addEventListener('keydown', triggerProtocol);
+
+        // 添加底部文字点击监听 (为了方便鼠标用户)
+        const footerText = document.querySelector('[data-lang="footer-msg"]');
+        if(footerText) {
+            footerText.addEventListener('click', triggerProtocol);
+            footerText.style.cursor = 'none'; // 保持风格
+        }
+
+        // 添加简单的淡入动画样式
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fadeIn { to { opacity: 1; } }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+</body>
+</html>

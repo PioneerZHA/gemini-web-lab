@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ОБЪЕКТ-77 | SYSTEM RECOVERY</title>
+    <style>
+        :root {
+            --bg-color: #050a05;
+            --primary-color: #33ff33; /* Phosphor Green */
+            --dim-color: #1a5c1a;
+            --alert-color: #ff3333;
+            --scan-line-color: rgba(18, 16, 16, 0.5);
+            --font-main: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none; /* 禁止选中文本，增加沉浸感 */
+            cursor: crosshair;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            font-family: var(--font-main);
+            overflow: hidden;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* --- CRT EFFECT LAYERS --- */
+        #screen-layer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 100;
+            pointer-events: none;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            animation: flicker 0.15s infinite;
+        }
+
+        #crt-curve {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 5rem rgba(0,0,0,0.75);
+            z-index: 101;
+            pointer-events: none;
+        }
+
+        /* --- TYPOGRAPHY & GLOW --- */
+        .glow-text {
+            text-shadow: 0 0 5px var(--primary-color), 0 0 10px var(--primary-color);
+        }
+
+        .dim-text {
+            color: var(--dim-color);
+            text-shadow: none;
+        }
+
+        .alert-text {
+            color: var(--alert-color);
+            text-shadow: 0 0 5px var(--alert-color);
+        }
+
+        h1, h2, h3 {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0 0 1rem 0;
+        }
+
+        /* --- BOOT SEQUENCE --- */
+        #boot-sequence {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%;
+            max-width: 600px;
+            z-index: 10;
+        }
+
+        .boot-line {
+            display: block;
+            margin-bottom: 5px;
+            opacity: 0;
+        }
+
+        /* --- MAIN INTERFACE (Hidden initially) --- */
+        #main-interface {
+            display: none; /* JS will toggle */
+            display: grid;
+            grid-template-columns: 250px 1fr 200px;
+            grid-template-rows: 60px 1fr 60px;
+            height: 100vh;
+            padding: 2rem;
+            grid-gap: 1rem;
+            opacity: 0;
+            transition: opacity 2s ease-in;
+        }
+
+        header {
+            grid-column: 1 / -1;
+            border-bottom: 2px solid var(--dim-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        aside#nav-panel {
+            border-right: 1px dashed var(--dim-color);
+            padding-right: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        main#content-viewer {
+            position: relative;
+            overflow-y: auto;
+            padding: 0 2rem;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: var(--dim-color); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--primary-color); }
+
+        aside#status-panel {
+            border-left: 1px dashed var(--dim-color);
+            padding-left: 1rem;
+            font-size: 0.8rem;
+        }
+
+        footer {
+            grid-column: 1 / -1;
+            border-top: 2px solid var(--dim-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.8rem;
+        }
+
+        /* --- INTERACTIVE ELEMENTS --- */
+        .nav-btn {
+            background: transparent;
+            border: 1px solid var(--dim-color);
+            color: var(--dim-color);
+            padding: 10px;
+            margin-bottom: 10px;
+            text-align: left;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-btn:hover, .nav-btn.active {
+            color: #000;
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        .nav-btn::before {
+            content: '>';
+            margin-right: 10px;
+            opacity: 0;
+        }
+        .nav-btn:hover::before, .nav-btn.active::before {
+            opacity: 1;
+        }
+
+        /* --- REDACTED TEXT MECHANIC --- */
+        .redacted {
+            background-color: var(--primary-color);
+            color: var(--primary-color);
+            cursor: help;
+            transition: 0.5s;
+        }
+        .redacted:hover {
+            background-color: transparent;
+            color: #fff; /* White to pop out */
+        }
+
+        /* --- VISUAL ELEMENTS --- */
+        #radar {
+            width: 100%;
+            height: 150px;
+            border: 1px solid var(--dim-color);
+            border-radius: 50%;
+            position: relative;
+            margin-bottom: 20px;
+            background: radial-gradient(circle, transparent 20%, var(--dim-color) 21%, transparent 22%),
+                        radial-gradient(circle, transparent 50%, var(--dim-color) 51%, transparent 52%);
+        }
+        #radar::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 50%;
+            height: 1px;
+            background: var(--primary-color);
+            transform-origin: 0 0;
+            animation: radar-spin 4s linear infinite;
+        }
+
+        /* --- ANIMATIONS --- */
+        @keyframes flicker {
+            0% { opacity: 0.97; }
+            5% { opacity: 0.95; }
+            10% { opacity: 0.9; }
+            15% { opacity: 0.95; }
+            20% { opacity: 0.99; }
+            50% { opacity: 0.95; }
+            80% { opacity: 0.9; }
+            100% { opacity: 0.97; }
+        }
+
+        @keyframes radar-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes glitch-anim {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .glitch-hover:hover {
+            animation: glitch-anim 0.3s infinite;
+            color: var(--alert-color);
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+            animation: fadeIn 0.5s;
+        }
+        .content-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Background Noise */
+        #noise-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.05;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- VISUAL FX LAYERS -->
+    <div id="screen-layer"></div>
+    <div id="crt-curve"></div>
+    <canvas id="noise-canvas"></canvas>
+
+    <!-- BOOT SEQUENCE -->
+    <div id="boot-sequence">
+        <code class="boot-line">> SYSTEM STARTUP: OBJECT-77</code>
+        <code class="boot-line">> CHECKING MEMORY... 64KB OK</code>
+        <code class="boot-line">> LOADING KERNEL... OK</code>
+        <code class="boot-line dim-text">> MOUNTING DRIVE A: ... ERROR</code>
+        <code class="boot-line">> MOUNTING DRIVE B: ... OK</code>
+        <code class="boot-line">> LOCATING GEOSPATIAL DATA...</code>
+        <code class="boot-line glow-text">> COORDS: 71°40'N, 62°30'E (YAMAL)</code>
+        <code class="boot-line">> ESTABLISHING UPLINK...</code>
+        <code class="boot-line alert-text">WARNING: EXTERNAL TEMPERATURE -45°C. ANOMALY DETECTED.</code>
+        <code class="boot-line" id="boot-complete">> PRESS ANY KEY TO INITIALIZE INTERFACE_</code>
+    </div>
+
+    <!-- MAIN INTERFACE -->
+    <div id="main-interface">
+        <header>
+            <div class="glow-text" style="font-weight:bold; font-size: 1.2rem;">// ОБЪЕКТ-77 // PROTOCOL_ZERO</div>
+            <div id="clock">00:00:00</div>
+        </header>
+
+        <aside id="nav-panel">
+            <button class="nav-btn active" onclick="loadContent('overview')">STATUS_OVERVIEW</button>
+            <button class="nav-btn" onclick="loadContent('logs')">RECOVERED_LOGS</button>
+            <button class="nav-btn" onclick="loadContent('world')">GEO_DATA</button>
+            <button class="nav-btn" onclick="loadContent('visuals')">VISUAL_FEED</button>
+            
+            <div style="margin-top: auto; padding: 10px; border: 1px solid var(--dim-color);">
+                <span class="dim-text">SYS_MSG:</span><br>
+                Decryption key integrity: 42%<br>
+                Hover over blocks to decrypt.
+            </div>
+        </aside>
+
+        <main id="content-viewer">
+            
+            <!-- SECTION: OVERVIEW -->
+            <div id="overview" class="content-section active">
+                <h2>System Status: <span class="alert-text">CRITICAL</span></h2>
+                <p>Facility "Vostok-4" has been silent since 1982. Automated emergency systems have been engaged for <span class="glitch-hover">15,492 days</span>.</p>
+                <br>
+                <p>Detecting high levels of <span class="redacted">psionic radiation</span> emanating from the lower levels. The containment seal on Sector 9 is compromised.</p>
+                <br>
+                <div style="border: 1px solid var(--primary-color); padding: 1rem;">
+                    <h3>DIRECTIVE 7:</h3>
+                    <p>Do not trust the visual inputs. The cold distorts light. The <span class="redacted">humming sound</span> distorts thought.</p>
+                    <p>Find the source. Terminate the signal.</p>
+                </div>
+            </div>
+
+            <!-- SECTION: LOGS -->
+            <div id="logs" class="content-section">
+                <h2>Audio/Text Fragments</h2>
+                
+                <div style="margin-bottom: 2rem;">
+                    <span class="dim-text">[DATE: 12-NOV-1981] [AUTHOR: DR. SOKOLOV]</span>
+                    <p>"We dug too deep into the permafrost. It wasn't rock we hit. It was... <span class="redacted">biological metal</span>. It screams when we drill. The workers are complaining of nightmares."</p>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <span class="dim-text">[DATE: 24-DEC-1981] [AUTHOR: UNKNOWN]</span>
+                    <p>"The heating units failed an hour ago. Frost is forming on the *inside* of the monitors. I saw Ivan walking outside without a suit. He was smiling. <span class="redacted">He dissolved into snow</span> when I touched him."</p>
+                </div>
+
+                <div style="border-left: 3px solid var(--alert-color); padding-left: 10px;">
+                    <span class="alert-text">[PRIORITY TRANSMISSION]</span>
+                    <p class="glitch-hover">THEY ARE NOT GONE. THEY ARE WAITING IN THE STATIC.</p>
+                </div>
+            </div>
+
+            <!-- SECTION: WORLD -->
+            <div id="world" class="content-section">
+                <h2>Geospatial Analysis</h2>
+                <pre style="font-size: 0.7rem; color: var(--dim-color);">
+      .. .           .
+    .      .       .
+  .   ^^^    .   . ^^^ .
+ .  ^^^^^^^   . ^^^^^^^ .
+ .  ^^^^^^^^  . ^^^^^^^ .   [TARGET ZONE]
+  .   ^^^^    .   ^^^  .
+    .      .     .   .
+      .. .         .
+                </pre>
+                <p>Location: Yamal Peninsula, Soviet Union (Archived).</p>
+                <p>Environmental Hazards:</p>
+                <ul>
+                    <li>Temp: -50°C to -80°C</li>
+                    <li>Wind: 120km/h Blizzards</li>
+                    <li>Psychic Pressure: <span class="redacted">EXTREME</span></li>
+                </ul>
+                <p>The facility extends 2km beneath the ice. Structure layout implies it was not built, but <span class="redacted">grown</span>.</p>
+            </div>
+
+             <!-- SECTION: VISUALS -->
+             <div id="visuals" class="content-section">
+                <h2>Corrupted Feeds</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="height: 150px; background: repeating-linear-gradient(0deg, #000, #000 2px, #1a5c1a 3px); display: flex; align-items: center; justify-content: center; border: 1px solid var(--primary-color);">
+                        <span class="alert-text">NO SIGNAL</span>
+                    </div>
+                    <div style="height: 150px; background: #000; border: 1px solid var(--dim-color); padding: 10px; overflow: hidden;">
+                        ASCII_RENDER_01<br>
+                        # # # #<br>
+                        # ? ? #<br>
+                        # # # #<br>
+                        <span class="redacted">ENTITY DETECTED</span>
+                    </div>
+                </div>
+                <p style="margin-top: 10px;">Camera 04, 05, 08: OFFLINE. Camera 09: <span class="glitch-hover">OBSTRUCTED BY ORGANIC MATTER</span>.</p>
+            </div>
+
+        </main>
+
+        <aside id="status-panel">
+            <div id="radar"></div>
+            <div>
+                <p>CPU LOAD: <span id="cpu-val">12</span>%</p>
+                <p>RADS: <span class="alert-text">3.6 R/h</span></p>
+                <p>SANITY: 78%</p>
+            </div>
+            <br>
+            <div style="border-top: 1px solid var(--dim-color); padding-top: 10px;">
+                <p class="dim-text">> Awaiting input...</p>
+                <p class="dim-text">> _</p>
+            </div>
+        </aside>
+
+        <footer>
+            <span>TERMINAL ID: T-882</span>
+            <span>CONNECTION: UNSTABLE</span>
+            <span>© 1982 SOV_OS</span>
+        </footer>
+    </div>
+
+    <!-- AUDIO ELEMENT (Optional placeholder logic) -->
+    <!-- Sound is crucial for atmosphere, but strict HTML output can't include mp3 files. 
+         JS will simulate sound interaction visually. -->
+
+    <script>
+        // --- CONFIG & STATE ---
+        const bootSpeed = 400; // ms per line
+        let isBooted = false;
+
+        // --- DOM ELEMENTS ---
+        const bootSeq = document.getElementById('boot-sequence');
+        const mainInterface = document.getElementById('main-interface');
+        const lines = document.querySelectorAll('.boot-line');
+        const noiseCanvas = document.getElementById('noise-canvas');
+        const ctx = noiseCanvas.getContext('2d');
+
+        // --- NOISE GENERATOR (SNOW/STATIC) ---
+        function resizeCanvas() {
+            noiseCanvas.width = window.innerWidth;
+            noiseCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function drawNoise() {
+            const w = noiseCanvas.width;
+            const h = noiseCanvas.height;
+            const idata = ctx.createImageData(w, h);
+            const buffer32 = new Uint32Array(idata.data.buffer);
+            const len = buffer32.length;
+
+            for (let i = 0; i < len; i++) {
+                if (Math.random() < 0.05) { // Sparseness of snow/noise
+                    buffer32[i] = 0xff003300; // Greenish noise
+                }
+            }
+            ctx.putImageData(idata, 0, 0);
+            requestAnimationFrame(drawNoise);
+        }
+        drawNoise();
+
+        // --- BOOT SEQUENCE LOGIC ---
+        let lineIndex = 0;
+        
+        function runBoot() {
+            if (lineIndex < lines.length - 1) {
+                lines[lineIndex].style.opacity = 1;
+                
+                // Random glitch effect on text appear
+                if(Math.random() > 0.7) {
+                    lines[lineIndex].style.transform = `translateX(${Math.random() * 10 - 5}px)`;
+                    setTimeout(() => { lines[lineIndex].style.transform = 'none'; }, 100);
+                }
+
+                lineIndex++;
+                setTimeout(runBoot, Math.random() * bootSpeed + 100);
+            } else {
+                // Last line: Press Key
+                lines[lineIndex].style.opacity = 1;
+                lines[lineIndex].classList.add('blink');
+                document.addEventListener('keydown', finishBoot);
+                document.addEventListener('click', finishBoot);
+            }
+        }
+
+        function finishBoot() {
+            if (isBooted) return;
+            isBooted = true;
+            document.removeEventListener('keydown', finishBoot);
+            document.removeEventListener('click', finishBoot);
+
+            // Hide boot, show interface
+            bootSeq.style.display = 'none';
+            mainInterface.style.display = 'grid';
+            
+            // Allow reflow then fade in
+            setTimeout(() => {
+                mainInterface.style.opacity = 1;
+            }, 50);
+
+            startClock();
+            simulateCPU();
+        }
+
+        // --- INTERFACE LOGIC ---
+        function loadContent(id) {
+            // Update Buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update Content
+            document.querySelectorAll('.content-section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+
+            // Play fake sound effect (Visual shake)
+            document.body.style.transform = "translate(1px, 1px)";
+            setTimeout(() => document.body.style.transform = "none", 50);
+        }
+
+        // --- UTILS ---
+        function startClock() {
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+            }, 1000);
+        }
+
+        function simulateCPU() {
+            setInterval(() => {
+                const val = Math.floor(Math.random() * 30) + 10;
+                document.getElementById('cpu-val').innerText = val;
+            }, 2000);
+        }
+
+        // Start interaction
+        setTimeout(runBoot, 1000);
+
+    </script>
+</body>
+</html>

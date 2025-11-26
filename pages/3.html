@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: BOREALIS // TERMINAL LINK</title>
+    <style>
+        /* --- 核心基础设置 --- */
+        :root {
+            --color-bg: #050a0f;
+            --color-phosphor-primary: #ffb86c; /* 琥珀色 - 旧苏联终端常见 */
+            --color-phosphor-secondary: #ff5555; /* 警告红 */
+            --color-dim: #44475a;
+            --color-scanline: rgba(18, 16, 16, 0.5);
+            --font-main: 'Courier New', Courier, monospace;
+            --curve: cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            cursor: crosshair; /* 十字准星光标 */
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--color-bg);
+            color: var(--color-phosphor-primary);
+            font-family: var(--font-main);
+            overflow: hidden; /* 禁止滚动，通过内部容器滚动 */
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* --- CRT 屏幕效果 (后期处理层) --- */
+        .crt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            animation: flicker 0.15s infinite;
+        }
+
+        .crt-overlay::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: rgba(18, 16, 16, 0.1);
+            opacity: 0;
+            z-index: 2;
+            pointer-events: none;
+            animation: flicker 0.15s infinite;
+        }
+
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: 0 0 150px rgba(0,0,0,0.9) inset;
+            pointer-events: none;
+            z-index: 998;
+        }
+
+        /* --- 布局结构 --- */
+        .container {
+            display: grid;
+            grid-template-columns: 250px 1fr 60px;
+            grid-template-rows: 60px 1fr 40px;
+            height: 100vh;
+            padding: 2rem;
+            opacity: 0; /* 初始隐藏，等待启动动画 */
+            transition: opacity 1s ease-in;
+        }
+
+        /* 边框和装饰线条 */
+        .border-deco {
+            border: 1px solid var(--color-dim);
+            position: relative;
+        }
+
+        .border-deco::before, .border-deco::after {
+            content: '';
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--color-phosphor-primary);
+            transition: all 0.3s ease;
+        }
+        .border-deco::before { top: -2px; left: -2px; }
+        .border-deco::after { bottom: -2px; right: -2px; }
+
+        /* --- 头部 --- */
+        header {
+            grid-column: 1 / 4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--color-dim);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+            text-shadow: 0 0 5px var(--color-phosphor-primary);
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo-blink {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: var(--color-phosphor-primary);
+            margin-right: 10px;
+            animation: blink 1s step-end infinite;
+        }
+
+        .sys-status {
+            font-size: 0.8rem;
+            color: var(--color-dim);
+        }
+
+        /* --- 侧边导航 --- */
+        nav {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            padding-right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .nav-item {
+            padding: 10px;
+            border-left: 2px solid var(--color-dim);
+            color: var(--color-dim);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s var(--curve);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            border-left: 2px solid var(--color-phosphor-primary);
+            color: var(--color-bg);
+            background: var(--color-phosphor-primary);
+            padding-left: 20px;
+        }
+
+        /* --- 主内容区 --- */
+        main {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            padding: 0 20px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* 隐藏滚动条但保留功能 */
+        main::-webkit-scrollbar { width: 0px; }
+
+        .content-block {
+            display: none; /* JS控制显示 */
+            animation: slideIn 0.5s var(--curve);
+        }
+
+        .content-block.active {
+            display: block;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px dashed var(--color-phosphor-primary);
+            display: inline-block;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+            max-width: 800px;
+            text-align: justify;
+        }
+
+        /* --- 右侧仪表盘 --- */
+        aside {
+            grid-column: 3 / 4;
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            padding-bottom: 20px;
+        }
+
+        .lang-switch {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            cursor: pointer;
+            letter-spacing: 3px;
+            border: 1px solid var(--color-dim);
+            padding: 10px 5px;
+            transition: 0.3s;
+            color: var(--color-dim);
+        }
+
+        .lang-switch:hover {
+            color: var(--color-phosphor-primary);
+            border-color: var(--color-phosphor-primary);
+            box-shadow: 0 0 10px var(--color-phosphor-primary);
+        }
+
+        /* --- 底部 --- */
+        footer {
+            grid-column: 1 / 4;
+            display: flex;
+            align-items: center;
+            border-top: 1px solid var(--color-dim);
+            font-size: 0.7rem;
+            color: var(--color-dim);
+            justify-content: space-between;
+        }
+
+        /* --- 特殊元素 --- */
+        .visualizer {
+            width: 100%;
+            height: 150px;
+            border: 1px solid var(--color-dim);
+            margin-bottom: 20px;
+            background: rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .redacted {
+            background: var(--color-phosphor-primary);
+            color: var(--color-bg);
+            padding: 0 2px;
+        }
+        
+        .redacted:hover {
+            background: transparent;
+            color: var(--color-phosphor-primary);
+            text-decoration: line-through;
+        }
+
+        /* --- 启动加载器 --- */
+        #boot-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--color-bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .boot-text {
+            width: 300px;
+            text-align: left;
+        }
+
+        /* --- 动画 Keyframes --- */
+        @keyframes flicker {
+            0% { opacity: 0.27861; }
+            5% { opacity: 0.34769; }
+            10% { opacity: 0.23604; }
+            15% { opacity: 0.90626; }
+            20% { opacity: 0.18128; }
+            25% { opacity: 0.83891; }
+            30% { opacity: 0.65583; }
+            35% { opacity: 0.67807; }
+            40% { opacity: 0.26559; }
+            45% { opacity: 0.84693; }
+            50% { opacity: 0.96019; }
+            55% { opacity: 0.08594; }
+            60% { opacity: 0.20313; }
+            65% { opacity: 0.71988; }
+            70% { opacity: 0.53455; }
+            75% { opacity: 0.37288; }
+            80% { opacity: 0.71428; }
+            85% { opacity: 0.70419; }
+            90% { opacity: 0.7003; }
+            95% { opacity: 0.36108; }
+            100% { opacity: 0.24387; }
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
+
+        .glitch-anim {
+            animation: glitch 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+            color: var(--color-phosphor-secondary);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- CRT 滤镜层 -->
+    <div class="crt-overlay"></div>
+    <div class="vignette"></div>
+
+    <!-- 启动画面 -->
+    <div id="boot-screen">
+        <div class="boot-text">
+            <span id="boot-log"></span><span class="logo-blink">_</span>
+        </div>
+    </div>
+
+    <!-- 主界面 -->
+    <div class="container" id="main-interface">
+        
+        <header>
+            <div class="logo">
+                <span class="logo-blink"></span>
+                <span id="header-title">PROJECT: BOREALIS</span>
+            </div>
+            <div class="sys-status">
+                LAT: 78.22 N / LON: 15.65 E<br>
+                TEMP: -32°C // SECTOR: 4
+            </div>
+        </header>
+
+        <nav>
+            <div class="nav-item active border-deco" data-target="status" onclick="navigate('status')">
+                <span class="lang" data-en="01 // STATUS" data-cn="01 // 设施状态">01 // STATUS</span>
+            </div>
+            <div class="nav-item border-deco" data-target="archive" onclick="navigate('archive')">
+                <span class="lang" data-en="02 // ARCHIVES" data-cn="02 // 绝密档案">02 // ARCHIVES</span>
+            </div>
+            <div class="nav-item border-deco" data-target="visuals" onclick="navigate('visuals')">
+                <span class="lang" data-en="03 // OPTICS" data-cn="03 // 视觉信号">03 // OPTICS</span>
+            </div>
+            <div class="nav-item border-deco" data-target="comms" onclick="navigate('comms')">
+                <span class="lang" data-en="04 // COMMS" data-cn="04 // 联络频率">04 // COMMS</span>
+            </div>
+        </nav>
+
+        <main class="border-deco">
+            
+            <!-- SECTION: STATUS -->
+            <div id="status" class="content-block active">
+                <h1 class="scramble lang" data-en="SYSTEM STATUS: CRITICAL" data-cn="系统状态：临界">SYSTEM STATUS: CRITICAL</h1>
+                
+                <div class="visualizer">
+                    <canvas id="oscillo"></canvas>
+                </div>
+
+                <p class="lang" 
+                   data-en="Connection established via auxiliary satellite uplink. The Borealis Facility has been silent for [DATA CORRUPTED] years. Automated life support systems are operating at 14% efficiency." 
+                   data-cn="通过备用卫星上行链路建立连接。Borealis 设施已静默 [数据损坏] 年。自动维生系统运作效率仅为 14%。">
+                   Connection established via auxiliary satellite uplink. The Borealis Facility has been silent for [DATA CORRUPTED] years. Automated life support systems are operating at 14% efficiency.
+                </p>
+                <p class="lang"
+                   data-en="Subject 'Echo' has breached containment sector 7. Ambient temperature dropping rapidly. We are not alone here. The machinery... it sings."
+                   data-cn="代号‘Echo’的实验体已突破第7收容区。环境温度急速下降。我们并不孤单。那些机器……它们在歌唱。">
+                   Subject 'Echo' has breached containment sector 7. Ambient temperature dropping rapidly. We are not alone here. The machinery... it sings.
+                </p>
+            </div>
+
+            <!-- SECTION: ARCHIVE -->
+            <div id="archive" class="content-block">
+                <h1 class="scramble lang" data-en="DECRYPTED LOGS" data-cn="解密日志">DECRYPTED LOGS</h1>
+                <p style="color: var(--color-dim)">ACCESS LEVEL: 5 // CLEARANCE GRANTED</p>
+                <br>
+                <p>>> <strong>LOG_1984_11_02</strong></p>
+                <p class="lang"
+                   data-en="Dr. Ivanov insists the <span class='redacted'>anomaly</span> is reacting to thermal stimuli. We tried to thaw the core. That was a mistake. The ice isn't melting; it's growing inwards."
+                   data-cn="Ivanov 博士坚持认为 <span class='redacted'>异常点</span> 对热刺激有反应。我们试图解冻核心。那是个错误。冰没有融化；它在向内生长。">
+                   Dr. Ivanov insists the <span class="redacted">anomaly</span> is reacting to thermal stimuli. We tried to thaw the core. That was a mistake. The ice isn't melting; it's growing inwards.
+                </p>
+                <hr style="border: 0; border-bottom: 1px dashed var(--color-dim); margin: 20px 0;">
+                <p>>> <strong>LOG_1984_12_25</strong></p>
+                <p class="lang"
+                   data-en="They found the maintenance crew fused to the generator. Not frozen. Fused. Like the metal and flesh decided to become one. The resonance frequency is 18kHz. It hurts my teeth."
+                   data-cn="他们发现维修小组与发电机融合在了一起。不是冻住。是融合。就像金属和血肉决定合二为一。共振频率是 18kHz。我的牙齿很痛。">
+                   They found the maintenance crew fused to the generator. Not frozen. Fused. Like the metal and flesh decided to become one. The resonance frequency is 18kHz. It hurts my teeth.
+                </p>
+            </div>
+
+            <!-- SECTION: VISUALS -->
+            <div id="visuals" class="content-block">
+                <h1 class="scramble lang" data-en="SURVEILLANCE FEED" data-cn="监控信号">SURVEILLANCE FEED</h1>
+                <div style="width: 100%; height: 300px; background: #000; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-phosphor-primary);">
+                    <!-- 纯 CSS 绘制的雷达扫描效果 -->
+                    <div style="position: absolute; width: 280px; height: 280px; border: 1px dashed var(--color-dim); border-radius: 50%;"></div>
+                    <div style="position: absolute; width: 200px; height: 200px; border: 1px dashed var(--color-dim); border-radius: 50%;"></div>
+                    <div style="position: absolute; width: 140px; height: 1px; background: rgba(255,184,108, 0.5); top: 50%; left: 50%; transform-origin: 0 0; animation: scan 4s linear infinite;"></div>
+                    <div style="color: var(--color-dim); z-index: 10;">SIGNAL LOST...</div>
+                </div>
+                <br>
+                <p class="lang"
+                   data-en="Cameras 1 through 6 are offline. Audio sensors detecting heavy mechanical movement in the Main Hall."
+                   data-cn="1 至 6 号摄像头已离线。音频传感器在主大厅检测到沉重的机械运动。">
+                   Cameras 1 through 6 are offline. Audio sensors detecting heavy mechanical movement in the Main Hall.
+                </p>
+            </div>
+
+            <!-- SECTION: COMMS -->
+            <div id="comms" class="content-block">
+                <h1 class="scramble lang" data-en="OUTBOUND TRANSMISSION" data-cn="对外传输">OUTBOUND TRANSMISSION</h1>
+                <p class="lang"
+                   data-en="This terminal is the only remaining link to the outside world. If you are receiving this, do not come looking for us. Send a containment team."
+                   data-cn="此终端是通往外部世界的唯一剩余链路。如果你收到这条消息，不要来找我们。直接派遣收容小队。">
+                   This terminal is the only remaining link to the outside world. If you are receiving this, do not come looking for us. Send a containment team.
+                </p>
+                <br>
+                <div style="border: 1px solid var(--color-phosphor-primary); padding: 20px; text-align: center; cursor: pointer;" onmouseenter="this.style.background='var(--color-phosphor-primary)'; this.style.color='var(--color-bg)'" onmouseleave="this.style.background='transparent'; this.style.color='var(--color-phosphor-primary)'">
+                    <span class="lang" data-en="> INITIATE PROTOCOL: WISHLIST <" data-cn="> 执行协议：加入愿望单 <">> INITIATE PROTOCOL: WISHLIST <</span>
+                </div>
+                <br>
+                <div style="font-size: 0.8em; color: var(--color-dim);">
+                    DEV TEAM: [REDACTED]<br>
+                    YEAR: 202X
+                </div>
+            </div>
+
+        </main>
+
+        <aside>
+            <div class="lang-switch border-deco" onclick="toggleLanguage()">
+                <span id="lang-indicator">EN / CN</span>
+            </div>
+            <div style="margin-top: 20px; width: 20px; height: 100px; border: 1px solid var(--color-dim); position: relative;">
+                <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 64%; background: var(--color-phosphor-primary); animation: heightFluctuate 3s infinite;"></div>
+            </div>
+            <div style="font-size: 10px; margin-top: 5px; color: var(--color-dim);">CPU</div>
+        </aside>
+
+        <footer>
+            <span>TERMINAL_ID: 88-XJ-09</span>
+            <span>MEMORY: 64KB OK</span>
+            <span>NO SIGNAL</span>
+        </footer>
+
+    </div>
+
+    <!-- 脚本逻辑 -->
+    <script>
+        // --- 状态管理 ---
+        let currentLang = 'en';
+        let isBooted = false;
+        
+        // --- 启动序列 ---
+        const bootLog = [
+            "Initializing BIOS...",
+            "Loading Kernel: SOVIET-OS v3.1...",
+            "Checking Memory... OK",
+            "Mounting Drive A: ... OK",
+            "Decrypting Sector 4...",
+            "Connection Established."
+        ];
+
+        const bootScreen = document.getElementById('boot-screen');
+        const bootText = document.getElementById('boot-log');
+        const mainInterface = document.getElementById('main-interface');
+
+        async function typeLine(text) {
+            return new Promise(resolve => {
+                let i = 0;
+                bootText.innerHTML += "<div>> ";
+                const interval = setInterval(() => {
+                    bootText.lastChild.textContent += text.charAt(i);
+                    i++;
+                    if (i >= text.length) {
+                        clearInterval(interval);
+                        bootText.innerHTML += "</div>";
+                        resolve();
+                    }
+                }, 30); // 打字速度
+            });
+        }
+
+        async function runBoot() {
+            for (let line of bootLog) {
+                await typeLine(line);
+                await new Promise(r => setTimeout(r, 200));
+            }
+            await new Promise(r => setTimeout(r, 800));
+            
+            // 启动完成，切换界面
+            bootScreen.style.opacity = '0';
+            setTimeout(() => {
+                bootScreen.style.display = 'none';
+                mainInterface.style.opacity = '1';
+                isBooted = true;
+                drawOscilloscope(); // 启动视觉特效
+            }, 1000);
+        }
+
+        window.onload = runBoot;
+
+        // --- 导航逻辑 ---
+        function navigate(targetId) {
+            if (!isBooted) return;
+
+            // 播放一个简单的音效（这里用视觉故障模拟触觉反馈）
+            document.body.classList.add('glitch-anim');
+            setTimeout(() => document.body.classList.remove('glitch-anim'), 200);
+
+            // 更新菜单状态
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.querySelector(`.nav-item[data-target="${targetId}"]`).classList.add('active');
+
+            // 更新内容显示
+            document.querySelectorAll('.content-block').forEach(el => el.classList.remove('active'));
+            const targetContent = document.getElementById(targetId);
+            targetContent.classList.add('active');
+            
+            // 重新触发打字/乱码效果
+            scrambleText(targetContent);
+        }
+
+        // --- 语言切换 ---
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'cn' : 'en';
+            
+            // 乱码过渡效果
+            const allText = document.querySelectorAll('.lang');
+            allText.forEach(el => {
+                const originalText = el.getAttribute(`data-${currentLang}`);
+                if(originalText) {
+                    // 简单的乱码过渡
+                    el.innerText = generateRandomString(originalText.length);
+                    setTimeout(() => {
+                        el.innerHTML = originalText; // 使用 innerHTML 以支持 HTML 标签
+                    }, 150);
+                }
+            });
+
+            // 更新指示器
+            const indicator = document.getElementById('lang-indicator');
+            indicator.innerText = currentLang === 'en' ? 'EN / CN' : 'CN / EN';
+        }
+
+        // --- 视觉特效工具 ---
+        function generateRandomString(length) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*';
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        function scrambleText(container) {
+            const headers = container.querySelectorAll('.scramble');
+            headers.forEach(h => {
+                const final = h.getAttribute(`data-${currentLang}`);
+                let iterations = 0;
+                const interval = setInterval(() => {
+                    h.innerText = h.innerText.split('')
+                        .map((letter, index) => {
+                            if(index < iterations) return final[index];
+                            return generateRandomString(1);
+                        })
+                        .join('');
+                    
+                    if(iterations >= final.length) clearInterval(interval);
+                    iterations += 1/2; 
+                }, 30);
+            });
+        }
+
+        // --- 示波器动画 (Canvas) ---
+        function drawOscilloscope() {
+            const canvas = document.getElementById('oscillo');
+            const ctx = canvas.getContext('2d');
+            
+            // 设置 Canvas 分辨率
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            let time = 0;
+
+            function animate() {
+                ctx.fillStyle = 'rgba(5, 10, 15, 0.2)'; // 拖尾效果
+                ctx.fillRect(0, 0, rect.width, rect.height);
+                
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ffb86c';
+
+                for (let x = 0; x < rect.width; x++) {
+                    // 模拟不稳定的信号波形：正弦波 + 随机噪音
+                    const y = rect.height / 2 + 
+                              Math.sin(x * 0.05 + time) * 30 + 
+                              Math.sin(x * 0.1 - time) * 10 +
+                              (Math.random() - 0.5) * 5; // 噪音
+                    
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                
+                ctx.stroke();
+                time += 0.1;
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+
+        // CSS 动画补充
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes scan {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            @keyframes heightFluctuate {
+                0%, 100% { height: 64%; }
+                50% { height: 80%; }
+                20% { height: 40%; }
+                80% { height: 70%; }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+    </script>
+</body>
+</html>

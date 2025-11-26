@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OBJECT 774: THE ENTROPY SILO</title>
+    <style>
+        :root {
+            --phosphor-main: #ffb86c; /* 琥珀色，苏联终端常见 */
+            --phosphor-dim: #7f5c36;
+            --phosphor-alert: #ff5555;
+            --bg-color: #050505;
+            --scanline-color: rgba(0, 0, 0, 0.5);
+            --glass-reflection: rgba(255, 255, 255, 0.02);
+            --font-stack: 'Courier New', 'Courier', 'Consolas', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            cursor: crosshair; /* 十字准星鼠标 */
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--phosphor-main);
+            font-family: var(--font-stack);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        /* CRT Screen Wrapper */
+        #terminal-container {
+            width: 95vw;
+            height: 90vh;
+            position: relative;
+            background: radial-gradient(circle, #1a1a1a 0%, #000000 100%);
+            border: 2px solid #333;
+            box-shadow: 0 0 50px rgba(0,0,0,0.8);
+            overflow: hidden;
+            transform-style: preserve-3d;
+            border-radius: 10px;
+        }
+
+        /* Screen Effects */
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--scanline-color) 50%, transparent 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.6;
+        }
+
+        .glow-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(0,0,0,0.6) 100%);
+            pointer-events: none;
+            z-index: 101;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+        }
+
+        .flicker {
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            5% { opacity: 0.85; }
+            10% { opacity: 0.95; }
+            100% { opacity: 0.95; }
+        }
+
+        /* Layout Grid */
+        #interface-grid {
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            grid-template-rows: 60px 1fr 60px;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            gap: 20px;
+            z-index: 10;
+            position: relative;
+        }
+
+        /* Header */
+        header {
+            grid-column: 1 / -1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--phosphor-dim);
+            padding-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .status-light {
+            width: 12px;
+            height: 12px;
+            background-color: var(--phosphor-main);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--phosphor-main);
+            display: inline-block;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        /* Navigation (Left) */
+        nav {
+            grid-column: 1 / 2;
+            grid-row: 2 / 3;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            border-right: 1px solid var(--phosphor-dim);
+            padding-right: 20px;
+        }
+
+        .nav-item {
+            padding: 10px;
+            border: 1px solid transparent;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            opacity: 0.7;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item::before {
+            content: '[';
+            margin-right: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .nav-item::after {
+            content: ']';
+            margin-left: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            border-color: var(--phosphor-main);
+            opacity: 1;
+            background: rgba(255, 184, 108, 0.1);
+            text-shadow: 0 0 5px var(--phosphor-main);
+        }
+
+        .nav-item:hover::before, .nav-item:hover::after,
+        .nav-item.active::before, .nav-item.active::after {
+            opacity: 1;
+        }
+
+        /* Main Display (Center) */
+        #main-display {
+            grid-column: 2 / 3;
+            grid-row: 2 / 3;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            opacity: 0.3;
+        }
+
+        .content-layer {
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+        }
+        .content-layer::-webkit-scrollbar { display: none; }
+
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--phosphor-main);
+            display: inline-block;
+            padding-right: 50px;
+        }
+
+        p {
+            line-height: 1.6;
+            margin-bottom: 20px;
+            max-width: 800px;
+            font-size: 1rem;
+            text-align: justify;
+        }
+
+        .redacted {
+            background-color: var(--phosphor-main);
+            color: var(--bg-color);
+            padding: 0 2px;
+        }
+        
+        .redacted:hover {
+            background-color: transparent;
+            color: var(--phosphor-main);
+            text-decoration: line-through;
+        }
+
+        /* Data Panel (Right) */
+        #data-panel {
+            grid-column: 3 / 4;
+            grid-row: 2 / 3;
+            border-left: 1px solid var(--phosphor-dim);
+            padding-left: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .data-block h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            border-bottom: 1px dashed var(--phosphor-dim);
+            margin-bottom: 5px;
+            padding-bottom: 2px;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        /* Footer */
+        footer {
+            grid-column: 1 / -1;
+            grid-row: 3 / 4;
+            border-top: 1px solid var(--phosphor-dim);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            font-size: 0.8rem;
+        }
+
+        #lang-switch {
+            border: 1px solid var(--phosphor-main);
+            padding: 5px 15px;
+            transition: all 0.3s;
+        }
+
+        #lang-switch:hover {
+            background-color: var(--phosphor-main);
+            color: var(--bg-color);
+        }
+
+        /* Glitch Effect Class */
+        .glitch-text {
+            position: relative;
+        }
+        
+        /* Utility */
+        .mono-bold { font-weight: 700; }
+        .alert { color: var(--phosphor-alert); }
+
+        /* Sections specific styles */
+        .diagram-container {
+            border: 1px solid var(--phosphor-dim);
+            height: 200px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            background: rgba(255, 184, 108, 0.05);
+        }
+    </style>
+</head>
+<body>
+
+<div id="terminal-container" class="flicker">
+    <div class="scanlines"></div>
+    <div class="glow-overlay"></div>
+
+    <div id="interface-grid">
+        <header>
+            <div>
+                <span class="status-light"></span>
+                <span id="header-title">OBJECT 774 // Kholod</span>
+            </div>
+            <div id="clock">00:00:00 ZULU</div>
+        </header>
+
+        <nav id="nav-menu">
+            <!-- Navigation populated by JS -->
+        </nav>
+
+        <main id="main-display">
+            <canvas id="bg-canvas"></canvas>
+            <div id="content-area" class="content-layer">
+                <!-- Content injected here -->
+            </div>
+        </main>
+
+        <aside id="data-panel">
+            <div class="data-block">
+                <h3>System Telemetry</h3>
+                <div class="data-row"><span>CPU0</span><span id="cpu0-val">12%</span></div>
+                <div class="data-row"><span>CPU1</span><span id="cpu1-val">8%</span></div>
+                <div class="data-row"><span>MEM</span><span id="mem-val">4096K</span></div>
+            </div>
+            <div class="data-block">
+                <h3>Environment</h3>
+                <div class="data-row"><span>EXT TEMP</span><span>-42°C</span></div>
+                <div class="data-row"><span>WIND</span><span>88 km/h</span></div>
+                <div class="data-row"><span>RAD</span><span>0.04 Sv</span></div>
+            </div>
+            <div class="data-block">
+                <h3>Coordinates</h3>
+                <div class="data-row"><span>LAT</span><span>78.22 N</span></div>
+                <div class="data-row"><span>LON</span><span>102.4 E</span></div>
+            </div>
+        </aside>
+
+        <footer>
+            <div id="terminal-id">TERM_ID: 59-AB-2049</div>
+            <div id="lang-switch">LANG: EN/CN</div>
+        </footer>
+    </div>
+</div>
+
+<script>
+    /**
+     * STATE & CONFIG
+     */
+    const state = {
+        lang: 'CN', // 'CN' or 'EN'
+        currentSection: 'overview',
+        isTransitioning: false
+    };
+
+    // Low-context, high-concept hard sci-fi text data
+    const contentDB = {
+        'overview': {
+            title: { EN: "PROTOCOL: ICE_CORE", CN: "协议：冰芯 (ICE_CORE)" },
+            body: {
+                EN: `<p><strong>FACILITY STATUS:</strong> DORMANT. <br><strong>LAST HANDSHAKE:</strong> 1989-11-09.</p>
+                     <p>Object 774 is not a weapon. It is a <span class="redacted">thermodynamic dam</span> built into the Siberian permafrost. The facility exploits a localized breakdown of entropy to preserve data integrity against the arrow of time.</p>
+                     <p>The external world is decaying. Here, the mathematics are absolute. You are the act of observation required to collapse the wave function.</p>
+                     <div class="diagram-container">[VISUAL: FACILITY CROSS-SECTION]</div>`,
+                CN: `<p><strong>设施状态：</strong> 休眠。<br><strong>最后握手：</strong> 1989-11-09。</p>
+                     <p>物体 774 并非武器。它是一座嵌入西伯利亚永久冻土的<span class="redacted">热力学大坝</span>。该设施利用局部的熵减现象，对抗时间之箭以保存数据完整性。</p>
+                     <p>外部世界正在衰变。在此处，数学是绝对的。你是坍缩波函数所需的观测行为。</p>
+                     <div class="diagram-container">[视觉：设施剖面图]</div>`
+            }
+        },
+        'mechanics': {
+            title: { EN: "MECHANICS: ENTROPY", CN: "机制：熵 (ENTROPY)" },
+            body: {
+                EN: `<p>Conventionally, chaos increases. Inside the Silo, cause does not necessarily precede effect. We utilize the <span class="alert">Penrose-Stalinhof Loop</span> to recycle wasted heat into computational logic.</p>
+                     <p>Survival requires resource management not of food or ammunition, but of <strong>Probability</strong>. Every action increases the system's instability. When instability reaches 100%, reality decoheres.</p>
+                     <p>Do not trust your eyes. Trust the Geiger counter.</p>`,
+                CN: `<p>按照常规，混乱度总是增加。但在井（Silo）内，因果并不必然遵循先后。我们利用<span class="alert">彭罗斯-斯大林霍夫循环</span>将废热转化为计算逻辑。</p>
+                     <p>生存所需的资源管理并非针对食物或弹药，而是<strong>概率</strong>。每一个动作都会增加系统的不稳定性。当不稳定性达到 100% 时，现实将发生退相干。</p>
+                     <p>不要相信你的眼睛。相信盖革计数器。</p>`
+            }
+        },
+        'archive': {
+            title: { EN: "ARCHIVE: 1984", CN: "档案：1984" },
+            body: {
+                EN: `<p><strong>LOG_ID: 772-Alpha</strong><br>
+                     <em>Subject: Cognitive Drift in Personnel</em></p>
+                     <p>Dr. V. reports hearing voices. Not auditory hallucinations, but <span class="redacted">future echoes</span>. The walls of the facility are acting as recording media for events that haven't happened yet.</p>
+                     <p>We have ceased the use of digital clocks. Analog mechanisms are less susceptible to temporal jitter.</p>`,
+                CN: `<p><strong>日志_ID：772-Alpha</strong><br>
+                     <em>主题：人员的认知漂移</em></p>
+                     <p>V博士报告听到了声音。并非幻听，而是<span class="redacted">未来的回声</span>。设施的墙壁正在作为记录介质，记录尚未发生的事件。</p>
+                     <p>我们已停止使用数字时钟。模拟机械结构较少受到时间抖动的影响。</p>`
+            }
+        },
+        'map': {
+            title: { EN: "TOPOLOGY: SECTOR 4", CN: "拓扑：第4扇区" },
+            body: {
+                EN: `<p>Spatial logic is non-Euclidean near the Core. Corridors loop back on themselves based on the observer's stress levels.</p>
+                     <p><strong>Mapping Protocol:</strong><br>
+                     1. Mark path with chalk.<br>
+                     2. Do not look at reflections.<br>
+                     3. If a door was not there yesterday, do not open it.</p>`,
+                CN: `<p>核心附近的空间逻辑是非欧几里得的。走廊会根据观测者的压力水平发生自我循环。</p>
+                     <p><strong>测绘协议：</strong><br>
+                     1. 用粉笔标记路径。<br>
+                     2. 不要看反射物。<br>
+                     3. 如果昨天那里没有门，不要打开它。</p>`
+            }
+        },
+        'calibration': {
+            title: { EN: "CALIBRATION", CN: "校准 (CALIBRATION)" },
+            body: {
+                EN: `<p>Adjust your perception. The screen you are looking at is an interface between your biological neural net and the facility's silicon substrate.</p>
+                     <p>If text appears to bleed, blink rapidly. If you smell ozone, terminate the session immediately.</p>
+                     <p style="text-align:center; margin-top:50px;">[ INITIATE NEURAL LINK ]</p>`,
+                CN: `<p>校准你的感知。你所注视的屏幕是你生物神经网络与设施硅基底板之间的接口。</p>
+                     <p>如果文字出现渗色，请快速眨眼。如果闻到臭氧味，立即终止会话。</p>
+                     <p style="text-align:center; margin-top:50px;">[ 启动神经连接 ]</p>`
+            }
+        }
+    };
+
+    const navItems = [
+        { id: 'overview', labelEN: 'OVERVIEW', labelCN: '概览' },
+        { id: 'mechanics', labelEN: 'MECHANICS', labelCN: '机制' },
+        { id: 'archive', labelEN: 'ARCHIVE', labelCN: '档案' },
+        { id: 'map', labelEN: 'TOPOLOGY', labelCN: '拓扑' },
+        { id: 'calibration', labelEN: 'CALIBRATION', labelCN: '校准' },
+    ];
+
+    /**
+     * DOM ELEMENTS
+     */
+    const navMenu = document.getElementById('nav-menu');
+    const contentArea = document.getElementById('content-area');
+    const langSwitch = document.getElementById('lang-switch');
+    const clockDisplay = document.getElementById('clock');
+    const bgCanvas = document.getElementById('bg-canvas');
+    const ctx = bgCanvas.getContext('2d');
+
+    /**
+     * INITIALIZATION
+     */
+    function init() {
+        renderNav();
+        loadSection(state.currentSection);
+        startClock();
+        startTelemetry();
+        initCanvas();
+        animateCanvas();
+        
+        langSwitch.addEventListener('click', toggleLanguage);
+    }
+
+    /**
+     * NAVIGATION & RENDERING
+     */
+    function renderNav() {
+        navMenu.innerHTML = '';
+        navItems.forEach(item => {
+            const div = document.createElement('div');
+            div.className = `nav-item ${item.id === state.currentSection ? 'active' : ''}`;
+            div.innerText = state.lang === 'EN' ? item.labelEN : item.labelCN;
+            div.dataset.id = item.id;
+            div.onclick = () => {
+                if(state.currentSection !== item.id) loadSection(item.id);
+            };
+            navMenu.appendChild(div);
+        });
+    }
+
+    function toggleLanguage() {
+        state.lang = state.lang === 'CN' ? 'EN' : 'CN';
+        langSwitch.innerText = `LANG: ${state.lang}/...`;
+        renderNav(); // Re-render nav to update labels
+        loadSection(state.currentSection, true); // Reload content
+    }
+
+    function loadSection(sectionId, isLangSwitch = false) {
+        if (state.isTransitioning && !isLangSwitch) return;
+        state.isTransitioning = true;
+        
+        // Update Nav State
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        const activeNav = document.querySelector(`.nav-item[data-id="${sectionId}"]`);
+        if(activeNav) activeNav.classList.add('active');
+
+        state.currentSection = sectionId;
+
+        // Glitch Effect during transition
+        contentArea.style.opacity = 0;
+        contentArea.style.transform = "translateX(10px)";
+        
+        setTimeout(() => {
+            const data = contentDB[sectionId];
+            const title = state.lang === 'EN' ? data.title.EN : data.title.CN;
+            const body = state.lang === 'EN' ? data.body.EN : data.body.CN;
+
+            let html = `<h2>${title}</h2>
+                        <div class="typewriter-text">${body}</div>`;
+            
+            contentArea.innerHTML = html;
+            
+            // "Typewriter" or "Decode" reveal effect
+            contentArea.style.transition = "all 0.3s ease";
+            contentArea.style.opacity = 1;
+            contentArea.style.transform = "translateX(0)";
+            
+            state.isTransitioning = false;
+        }, 300);
+    }
+
+    /**
+     * UTILITIES
+     */
+    function startClock() {
+        setInterval(() => {
+            const now = new Date();
+            const timeString = now.toISOString().split('T')[1].split('.')[0];
+            clockDisplay.innerText = `${timeString} ZULU`;
+        }, 1000);
+    }
+
+    function startTelemetry() {
+        // Randomize numbers to make it look alive
+        setInterval(() => {
+            document.getElementById('cpu0-val').innerText = Math.floor(Math.random() * 20) + 10 + "%";
+            document.getElementById('cpu1-val').innerText = Math.floor(Math.random() * 15) + 5 + "%";
+        }, 2000);
+    }
+
+    /**
+     * CANVAS BACKGROUND (Visual Atmosphere)
+     * Draws particles (dust/snow) and subtle geometry
+     */
+    let particles = [];
+    let width, height;
+
+    function initCanvas() {
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+        
+        // Create particles
+        for(let i=0; i<100; i++) {
+            particles.push({
+                x: Math.random() * width,
+                y: Math.random() * height,
+                vx: (Math.random() - 0.5) * 0.5,
+                vy: (Math.random() * 0.5) + 0.2, // Falling down
+                size: Math.random() * 1.5,
+                alpha: Math.random() * 0.5
+            });
+        }
+    }
+
+    function resizeCanvas() {
+        width = document.getElementById('main-display').offsetWidth;
+        height = document.getElementById('main-display').offsetHeight;
+        bgCanvas.width = width;
+        bgCanvas.height = height;
+    }
+
+    function animateCanvas() {
+        ctx.clearRect(0, 0, width, height);
+        
+        // Draw Particles (Dust/Snow)
+        ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--phosphor-main');
+        
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            
+            // Reset if out of bounds
+            if(p.y > height) p.y = 0;
+            if(p.x > width) p.x = 0;
+            if(p.x < 0) p.x = width;
+
+            ctx.globalAlpha = p.alpha * 0.4;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Draw geometric hint (Wireframe Sphere abstract) - ONLY in Overview or Map
+        if(state.currentSection === 'overview' || state.currentSection === 'map') {
+            ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--phosphor-dim');
+            ctx.lineWidth = 0.5;
+            ctx.globalAlpha = 0.2;
+            
+            const time = Date.now() * 0.0005;
+            const cx = width / 2;
+            const cy = height / 2;
+            const r = 100;
+            
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                ctx.ellipse(cx, cy, r, r * Math.sin(time + i), i * (Math.PI/3), 0, Math.PI * 2);
+            }
+            ctx.stroke();
+        }
+
+        requestAnimationFrame(animateCanvas);
+    }
+
+    // Start
+    init();
+
+</script>
+</body>
+</html>
