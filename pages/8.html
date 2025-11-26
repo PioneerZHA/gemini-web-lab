@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: KOLMOGOROV-42 | 柯尔莫哥洛夫-42</title>
+    <style>
+        :root {
+            --bg-color: #050505;
+            --primary-color: #ffb84d; /* Amber CRT */
+            --dim-color: #594019;
+            --scan-line-color: rgba(0, 0, 0, 0.5);
+            --font-main: 'Courier New', Courier, monospace;
+            --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            cursor: crosshair; /* 准星光标 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--primary-color);
+            font-family: var(--font-main);
+            overflow: hidden; /* 禁止原生滚动 */
+            height: 100vh;
+            width: 100vw;
+            font-size: 14px;
+            line-height: 1.6;
+            -webkit-font-smoothing: none;
+        }
+
+        /* --- CRT Effects & Noise --- */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .scanlines {
+            background: linear-gradient(to bottom, var(--scan-line-color) 50%, transparent 50%);
+            background-size: 100% 4px;
+            opacity: 0.15;
+        }
+
+        .vignette {
+            background: radial-gradient(circle, transparent 60%, black 100%);
+        }
+
+        .noise {
+            opacity: 0.05;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        /* --- Layout --- */
+        .wrapper {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: 60px 1fr 60px;
+            grid-template-rows: 60px 1fr 60px;
+            z-index: 10;
+        }
+
+        /* Borders / UI Frame */
+        .border-line {
+            background-color: var(--dim-color);
+            position: absolute;
+        }
+        .bl-top { top: 60px; left: 0; width: 100%; height: 1px; }
+        .bl-bottom { bottom: 60px; left: 0; width: 100%; height: 1px; }
+        .bl-left { left: 60px; top: 0; height: 100%; width: 1px; }
+        .bl-right { right: 60px; top: 0; height: 100%; width: 1px; }
+
+        /* Corner Decorations */
+        .corner {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border: 1px solid var(--primary-color);
+        }
+        .c-tl { top: 55px; left: 55px; border-right: none; border-bottom: none; }
+        .c-tr { top: 55px; right: 55px; border-left: none; border-bottom: none; }
+        .c-bl { bottom: 55px; left: 55px; border-right: none; border-top: none; }
+        .c-br { bottom: 55px; right: 55px; border-left: none; border-top: none; }
+
+        /* --- Header / Footer --- */
+        header {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .lang-switch {
+            border: 1px solid var(--dim-color);
+            padding: 2px 8px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .lang-switch:hover {
+            background: var(--primary-color);
+            color: var(--bg-color);
+        }
+
+        footer {
+            grid-column: 2;
+            grid-row: 3;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 10px;
+            color: var(--dim-color);
+        }
+
+        /* --- Main Content Area --- */
+        main {
+            grid-column: 2;
+            grid-row: 2;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Background Canvas for Particles */
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        /* Sections */
+        .section {
+            position: absolute;
+            width: 80%;
+            max-width: 800px;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: opacity 0.8s var(--ease-out), transform 0.8s var(--ease-out);
+            pointer-events: none;
+        }
+
+        .section.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: all;
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            font-weight: normal;
+            letter-spacing: -2px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--primary-color);
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            opacity: 0.8;
+            font-weight: normal;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .text-block {
+            font-size: 1rem;
+            max-width: 600px;
+            margin-bottom: 40px;
+            text-align: justify;
+            opacity: 0.9;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 40px;
+            border-top: 1px solid var(--dim-color);
+            padding-top: 20px;
+        }
+
+        .data-item small {
+            display: block;
+            color: var(--dim-color);
+            font-size: 0.7rem;
+            margin-bottom: 5px;
+        }
+
+        /* Navigation Buttons (Diegetic) */
+        .nav-hub {
+            display: flex;
+            gap: 20px;
+            margin-top: 50px;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid var(--primary-color);
+            color: var(--primary-color);
+            padding: 10px 20px;
+            font-family: var(--font-main);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn:hover {
+            background: var(--primary-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--primary-color);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: rgba(255,255,255,0.2);
+            transform: skewX(-45deg);
+            transition: 0.5s;
+        }
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* Glitch Animation */
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        .glitch-hover:hover {
+            animation: glitch 0.3s infinite;
+        }
+
+        /* Mobile Adaptation */
+        @media (max-width: 768px) {
+            .wrapper {
+                grid-template-columns: 20px 1fr 20px;
+                grid-template-rows: 50px 1fr 50px;
+            }
+            .bl-left { left: 20px; }
+            .bl-right { right: 20px; }
+            .bl-top { top: 50px; }
+            .bl-bottom { bottom: 50px; }
+            .c-tl, .c-tr, .c-bl, .c-br { display: none; }
+            h1 { font-size: 1.8rem; }
+            .nav-hub { flex-direction: column; gap: 10px; }
+        }
+
+        /* Loading Screen */
+        #loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s;
+        }
+        .loader-text {
+            margin-top: 10px;
+            font-size: 12px;
+            animation: blink 0.5s infinite;
+        }
+        .progress-bar {
+            width: 200px;
+            height: 2px;
+            background: var(--dim-color);
+            margin-top: 10px;
+            position: relative;
+        }
+        .progress-fill {
+            position: absolute;
+            top: 0; left: 0; height: 100%;
+            background: var(--primary-color);
+            width: 0%;
+            transition: width 0.1s;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+    </style>
+</head>
+<body>
+
+    <!-- CRT Overlay Effects -->
+    <div class="overlay scanlines"></div>
+    <div class="overlay noise"></div>
+    <div class="overlay vignette"></div>
+
+    <!-- Loader -->
+    <div id="loader">
+        <div style="font-size: 40px;">◆</div>
+        <div class="progress-bar"><div class="progress-fill" id="p-fill"></div></div>
+        <div class="loader-text">INITIALIZING NEURAL LINK...</div>
+    </div>
+
+    <!-- Main Wrapper -->
+    <div class="wrapper">
+        <!-- UI Borders -->
+        <div class="border-line bl-top"></div>
+        <div class="border-line bl-bottom"></div>
+        <div class="border-line bl-left"></div>
+        <div class="border-line bl-right"></div>
+        <div class="corner c-tl"></div>
+        <div class="corner c-tr"></div>
+        <div class="corner c-bl"></div>
+        <div class="corner c-br"></div>
+
+        <!-- Header -->
+        <header>
+            <div>Project: KOLMOGOROV-42</div>
+            <div class="lang-switch" onclick="toggleLanguage()">EN / 中</div>
+        </header>
+
+        <!-- Dynamic Content -->
+        <main>
+            <canvas id="bg-canvas"></canvas>
+
+            <!-- SECTION 1: HOME (Atmosphere) -->
+            <section id="sec-home" class="section active">
+                <h1 class="glitch-hover" data-key="title">KOLMOGOROV-42</h1>
+                <h2 data-key="subtitle">The Observation Paradox</h2>
+                <div class="text-block" data-key="intro">
+                    Location: Zaslon-4 Research Outpost, Arctic Circle.<br>
+                    Status: Quarantine.<br>
+                    <br>
+                    We thought we were studying the anomaly. We were wrong. The anomaly was studying our observation methods.
+                </div>
+                <div class="nav-hub">
+                    <button class="btn" onclick="navigate('sec-world')" data-key="btn_archive">Access Archives</button>
+                    <button class="btn" onclick="navigate('sec-system')" data-key="btn_protocol">System Logic</button>
+                </div>
+            </section>
+
+            <!-- SECTION 2: WORLD (Lore) -->
+            <section id="sec-world" class="section">
+                <h1 data-key="world_title">Entropic Decay</h1>
+                <h2 data-key="world_sub">The Physics of Memory</h2>
+                <div class="text-block" data-key="world_desc">
+                    In 1982, the Soviet Academy of Sciences drilled a borehole 13km deep. They didn't find hell; they found a recursive mathematical error in the local spacetime manifold.<br><br>
+                    The "Zaslon" facility was built to contain the spread of this logic virus. Here, entropy flows backward. A shattered coffee cup reassembles, but loses its mass in the process. Memories become physical objects, while physical objects fade into equations.
+                </div>
+                <div class="data-grid">
+                    <div class="data-item">
+                        <small>TEMP</small>
+                        <span>-89.2°C</span>
+                    </div>
+                    <div class="data-item">
+                        <small>PSI STABILITY</small>
+                        <span>14.2%</span>
+                    </div>
+                    <div class="data-item">
+                        <small>DEPTH</small>
+                        <span>12,262m</span>
+                    </div>
+                </div>
+                <div class="nav-hub">
+                    <button class="btn" onclick="navigate('sec-home')" data-key="btn_back">Return</button>
+                    <button class="btn" onclick="navigate('sec-system')" data-key="btn_next">Analysis</button>
+                </div>
+            </section>
+
+            <!-- SECTION 3: SYSTEM (Gameplay Concepts) -->
+            <section id="sec-system" class="section">
+                <h1 data-key="sys_title">Protocol</h1>
+                <h2 data-key="sys_sub">Cognitive Reconstruction</h2>
+                <div class="text-block" data-key="sys_desc">
+                    <strong>Objective:</strong> Stabilize the reality field.<br><br>
+                    This is not a shooter. This is a scientific instrument calibration process. You must operate vintage analog terminals to interpret quantum noise. <br><br>
+                    Correctly solving the differential equations of the environment prevents the facility from collapsing into a singularity. Failure results in your timeline being erased from causality.
+                </div>
+                <div class="nav-hub">
+                    <button class="btn" onclick="navigate('sec-world')" data-key="btn_prev">Previous Data</button>
+                    <button class="btn" onclick="navigate('sec-contact')" data-key="btn_connect">Establish Link</button>
+                </div>
+            </section>
+
+             <!-- SECTION 4: CONTACT -->
+             <section id="sec-contact" class="section">
+                <h1 data-key="con_title">Transmission</h1>
+                <div class="text-block" data-key="con_desc">
+                    The window of opportunity is closing. The signal is degrading.<br>
+                    Await further instructions via the neural link.
+                </div>
+                
+                <div style="border: 1px dashed var(--primary-color); padding: 20px; margin-bottom: 20px;">
+                    <div id="terminal-output" style="font-size: 12px; margin-bottom: 10px; height: 60px; overflow: hidden;">
+                        > Listening on frequency 1420 MHz...<br>
+                    </div>
+                    <input type="text" placeholder="ENTER_COMMAND_TOKEN" style="background: none; border: none; border-bottom: 1px solid var(--primary-color); color: var(--primary-color); width: 100%; outline: none; font-family: inherit; text-transform: uppercase;">
+                </div>
+
+                <div class="nav-hub">
+                    <button class="btn" onclick="navigate('sec-home')" data-key="btn_reboot">System Reboot</button>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <div id="clock">00:00:00</div>
+            <div>SYS.VER.4.02 // K-42</div>
+        </footer>
+    </div>
+
+    <script>
+        /* --- 1. LOCALIZATION DATABASE --- */
+        const langData = {
+            en: {
+                title: "KOLMOGOROV-42",
+                subtitle: "The Observation Paradox",
+                intro: "Location: Zaslon-4 Research Outpost, Arctic Circle.<br>Status: Quarantine.<br><br>We thought we were studying the anomaly. We were wrong. The anomaly was studying our observation methods.",
+                btn_archive: "Access Archives",
+                btn_protocol: "System Logic",
+                world_title: "Entropic Decay",
+                world_sub: "The Physics of Memory",
+                world_desc: "In 1982, the Soviet Academy of Sciences drilled a borehole 13km deep. They didn't find hell; they found a recursive mathematical error in the local spacetime manifold.<br><br>The 'Zaslon' facility was built to contain the spread of this logic virus. Here, entropy flows backward. A shattered coffee cup reassembles, but loses its mass in the process. Memories become physical objects, while physical objects fade into equations.",
+                btn_back: "Return",
+                btn_next: "Analysis",
+                sys_title: "Protocol",
+                sys_sub: "Cognitive Reconstruction",
+                sys_desc: "<strong>Objective:</strong> Stabilize the reality field.<br><br>This is not a shooter. This is a scientific instrument calibration process. You must operate vintage analog terminals to interpret quantum noise. <br><br>Correctly solving the differential equations of the environment prevents the facility from collapsing into a singularity. Failure results in your timeline being erased from causality.",
+                btn_prev: "Previous Data",
+                btn_connect: "Establish Link",
+                con_title: "Transmission",
+                con_desc: "The window of opportunity is closing. The signal is degrading.<br>Await further instructions via the neural link.",
+                btn_reboot: "System Reboot"
+            },
+            cn: {
+                title: "柯尔莫哥洛夫-42",
+                subtitle: "观测者悖论",
+                intro: "地点：扎斯隆-4号科研前哨站，北极圈。<br>状态：隔离中。<br><br>我们以为自己在研究那个异常点。我们错了。是异常点在研究我们的观测方式。",
+                btn_archive: "访问档案",
+                btn_protocol: "系统逻辑",
+                world_title: "熵减衰变",
+                world_sub: "记忆的物理属性",
+                world_desc: "1982年，苏联科学院钻探了一个13公里深的钻孔。他们没有发现地狱，却发现了局地时空流形中的一个递归数学错误。<br><br>“扎斯隆”设施的建立是为了遏制这种逻辑病毒的传播。在这里，熵逆流而动。破碎的咖啡杯会重组，但在此过程中会失去质量。记忆变成实体，而实体消散为方程。",
+                btn_back: "返回",
+                btn_next: "解析",
+                sys_title: "协议",
+                sys_sub: "认知重构",
+                sys_desc: "<strong>目标：</strong> 稳定现实场。<br><br>这不是射击游戏。这是一个精密科学仪器的校准过程。你必须操作老式的模拟终端来解析量子噪声。<br><br>正确解开环境的微分方程可防止设施坍缩成奇点。失败将导致你的时间线从因果律中被抹除。",
+                btn_prev: "上条数据",
+                btn_connect: "建立连接",
+                con_title: "传输",
+                con_desc: "机会窗口正在关闭。信号正在衰减。<br>等待神经链路的进一步指令。",
+                btn_reboot: "系统重启"
+            }
+        };
+
+        let currentLang = 'en';
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'cn' : 'en';
+            
+            // Typewriter effect for text change
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const key = el.getAttribute('data-key');
+                if (langData[currentLang][key]) {
+                    // Simple scramble effect
+                    let originalText = langData[currentLang][key];
+                    el.style.opacity = 0;
+                    setTimeout(() => {
+                        el.innerHTML = originalText;
+                        el.style.opacity = 1;
+                    }, 200);
+                }
+            });
+        }
+
+        /* --- 2. NAVIGATION SYSTEM --- */
+        function navigate(targetId) {
+            // Fade out current
+            document.querySelectorAll('.section.active').forEach(sec => {
+                sec.classList.remove('active');
+            });
+
+            // Wait/Processing simulation
+            setTimeout(() => {
+                document.getElementById(targetId).classList.add('active');
+            }, 600);
+        }
+
+        /* --- 3. CANVAS PARTICLE SYSTEM (SNOW / DATA) --- */
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let particles = [];
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.size = Math.random() * 2;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = Math.random() * 1 + 0.2;
+                this.opacity = Math.random() * 0.5 + 0.1;
+            }
+
+            update(mouseX, mouseY) {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                // Mouse interaction (Repel)
+                const dx = this.x - mouseX;
+                const dy = this.y - mouseY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < 100) {
+                    this.x += dx / dist * 2;
+                    this.y += dy / dist * 2;
+                }
+
+                // Reset
+                if (this.y > height) {
+                    this.y = 0;
+                    this.x = Math.random() * width;
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(255, 184, 77, ${this.opacity})`;
+                ctx.fillRect(this.x, this.y, this.size, this.size); // Square particles for digital feel
+            }
+        }
+
+        // Initialize particles
+        for (let i = 0; i < 150; i++) {
+            particles.push(new Particle());
+        }
+
+        let mouseX = -1000, mouseY = -1000;
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Draw grid lines (subtle)
+            ctx.strokeStyle = 'rgba(255, 184, 77, 0.05)';
+            ctx.beginPath();
+            for(let x=0; x<width; x+=100) { ctx.moveTo(x,0); ctx.lineTo(x,height); }
+            for(let y=0; y<height; y+=100) { ctx.moveTo(0,y); ctx.lineTo(width,y); }
+            ctx.stroke();
+
+            particles.forEach(p => {
+                p.update(mouseX, mouseY);
+                p.draw();
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        /* --- 4. LOADER & INIT --- */
+        window.onload = () => {
+            const loader = document.getElementById('loader');
+            const fill = document.getElementById('p-fill');
+            
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if(progress > 100) progress = 100;
+                fill.style.width = progress + '%';
+                
+                if(progress === 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        loader.style.opacity = 0;
+                        setTimeout(() => {
+                            loader.style.display = 'none';
+                            // Trigger first animation
+                            document.getElementById('sec-home').classList.add('active');
+                        }, 1000);
+                    }, 500);
+                }
+            }, 50);
+
+            // Clock
+            setInterval(() => {
+                const now = new Date();
+                document.getElementById('clock').innerText = now.toISOString().split('T')[1].split('.')[0] + " UTC";
+            }, 1000);
+
+            // Terminal random text
+            setInterval(() => {
+                if(document.getElementById('sec-contact').classList.contains('active')) {
+                    const term = document.getElementById('terminal-output');
+                    const msgs = [
+                        "Analyzing wave function...",
+                        "Entropy increasing...",
+                        "Packet loss detected...",
+                        "> Signal weak."
+                    ];
+                    const msg = msgs[Math.floor(Math.random() * msgs.length)];
+                    term.innerHTML += `> ${msg}<br>`;
+                    term.scrollTop = term.scrollHeight;
+                }
+            }, 2000);
+        };
+
+    </script>
+</body>
+</html>
