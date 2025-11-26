@@ -5,24 +5,258 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>导航站</title>
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; }
-    h1 { margin-bottom: 0.2rem; }
-    ul { line-height: 1.9; }
-    footer { margin-top: 32px; color: #666; font-size: 12px; }
+    :root {
+      --bg: #0b0f17;
+      --bg-soft: #111827;
+      --card: rgba(17, 24, 39, 0.9);
+      --card-hover: rgba(31, 41, 55, 0.95);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --brand: #8b5cf6;
+      --brand-2: #22d3ee;
+      --ring: rgba(139, 92, 246, 0.35);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      max-width: 980px;
+      margin: 40px auto;
+      padding: 0 16px;
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(139,92,246,0.18), transparent 55%),
+        radial-gradient(900px 500px at 110% 0%, rgba(34,211,238,0.12), transparent 60%),
+        linear-gradient(180deg, #070a11 0%, var(--bg) 100%);
+      min-height: 100vh;
+      animation: pageFade 520ms ease-out both;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 3vw, 2.4rem);
+      letter-spacing: 0.5px;
+      line-height: 1.1;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 6px 24px rgba(139,92,246,.25));
+    }
+
+    .subtitle {
+      margin: 8px 0 20px 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      padding: 6px 10px;
+      border-radius: 999px;
+      backdrop-filter: blur(8px);
+      white-space: nowrap;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transform: translateY(6px);
+      opacity: 0;
+      animation: cardIn 520ms ease-out forwards;
+    }
+
+    /* Stagger animation for cards */
+    .card:nth-child(1) { animation-delay: 40ms; }
+    .card:nth-child(2) { animation-delay: 80ms; }
+    .card:nth-child(3) { animation-delay: 120ms; }
+    .card:nth-child(4) { animation-delay: 160ms; }
+    .card:nth-child(5) { animation-delay: 200ms; }
+    .card:nth-child(6) { animation-delay: 240ms; }
+    .card:nth-child(7) { animation-delay: 280ms; }
+    .card:nth-child(8) { animation-delay: 320ms; }
+    .card:nth-child(9) { animation-delay: 360ms; }
+    .card:nth-child(10) { animation-delay: 400ms; }
+
+    .card-link {
+      display: grid;
+      gap: 6px;
+      padding: 14px 14px 13px 14px;
+      text-decoration: none;
+      color: inherit;
+      position: relative;
+      overflow: hidden;
+      border-radius: inherit;
+    }
+
+    .card-link::after {
+      content: "";
+      position: absolute;
+      inset: -60% -40%;
+      background:
+        radial-gradient(280px 140px at 10% 10%, rgba(139,92,246,0.25), transparent 60%),
+        radial-gradient(280px 180px at 90% 20%, rgba(34,211,238,0.20), transparent 65%);
+      opacity: 0;
+      transition: opacity 220ms ease;
+      pointer-events: none;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: 0.2px;
+    }
+
+    .card-path {
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      border-color: rgba(139, 92, 246, 0.35);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 0 3px var(--ring);
+      transform: translateY(-2px);
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+    }
+    .card:hover .card-link::after {
+      opacity: 1;
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      opacity: 0.9;
+    }
+
+    .footer-left {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 12px rgba(139,92,246,0.8);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes pageFade {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.9; }
+      50%      { transform: scale(1.35); opacity: 1; }
+    }
+
+    /* Reduce motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation: none !important; transition: none !important; }
+    }
   </style>
 </head>
 <body>
-  <h1>导航页</h1>
-  <p>这些是我用gemini生成的一些网页，点击进入：</p>
+  <header>
+    <h1>导航页</h1>
+    <div class="badge">7 个页面</div>
+  </header>
+  <p class="subtitle">这些是我用 gemini 生成的一些网页，点击进入：</p>
+
   <ul>
-    <li><a href="pages/1.html">1</a></li>
-<li><a href="pages/2.html">2</a></li>
-<li><a href="pages/3.html">3</a></li>
-<li><a href="pages/4.html">4</a></li>
-<li><a href="pages/5.html">5</a></li>
-<li><a href="pages/6.html">6</a></li>
-<li><a href="pages/7.html">7</a></li>
+
+      <li class="card">
+        <a class="card-link" href="pages/1.html" title="pages/1.html">
+          <span class="card-title">1</span>
+          <span class="card-path">pages/1.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/2.html" title="pages/2.html">
+          <span class="card-title">2</span>
+          <span class="card-path">pages/2.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/3.html" title="pages/3.html">
+          <span class="card-title">3</span>
+          <span class="card-path">pages/3.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/4.html" title="pages/4.html">
+          <span class="card-title">4</span>
+          <span class="card-path">pages/4.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/5.html" title="pages/5.html">
+          <span class="card-title">5</span>
+          <span class="card-path">pages/5.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/6.html" title="pages/6.html">
+          <span class="card-title">6</span>
+          <span class="card-path">pages/6.html</span>
+        </a>
+      </li>
+
+      <li class="card">
+        <a class="card-link" href="pages/7.html" title="pages/7.html">
+          <span class="card-title">7</span>
+          <span class="card-path">pages/7.html</span>
+        </a>
+      </li>
   </ul>
-  <footer>自动生成于 2025-11-26 18:11 UTC</footer>
+
+  <footer>
+    <div class="footer-left">
+      <span class="dot"></span>
+      <span>自动生成于 2025-11-27 02:21 GMT+8</span>
+    </div>
+    <div>Hosted on GitHub Pages</div>
+  </footer>
 </body>
 </html>
