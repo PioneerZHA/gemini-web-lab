@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 交互卡牌 - 终极修复版</title>
+    <style>
+        :root {
+            --card-width: 300px;
+            --card-height: 420px;
+            --card-radius: 16px;
+            --accent-color: #00ffcc;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: #111;
+            background-image: radial-gradient(circle at 50% 50%, #2a2a2a 0%, #000 100%);
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        /* 控制面板 */
+        .controls {
+            margin-bottom: 40px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .input-group { display: flex; gap: 10px; }
+        
+        input[type="text"] {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #444;
+            color: #fff;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        button, .file-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--accent-color);
+            color: var(--accent-color);
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        
+        button:hover, .file-btn:hover {
+            background: var(--accent-color);
+            color: #000;
+        }
+        
+        input[type="file"] { display: none; }
+
+        /* --- 核心结构 --- */
+
+        /* 1. 舞台层：负责透视和鼠标监听，本身不旋转 */
+        .scene {
+            width: var(--card-width);
+            height: var(--card-height);
+            position: relative;
+            perspective: 1200px; /* 3D 视距 */
+            z-index: 10;
+            /* 尺寸变化时的平滑过渡 */
+            transition: width 0.5s ease, height 0.5s ease; 
+        }
+
+        /* 2. 卡片层：负责旋转 */
+        .card {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            border-radius: var(--card-radius);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-image: url('https://images.unsplash.com/photo-1635322966219-b75ed372eb01?q=80&w=1000&auto=format&fit=crop');
+            background-color: #000;
+            
+            /* 关键：保留3D空间 */
+            transform-style: preserve-3d;
+            will-change: transform;
+            
+            /* 阴影 */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 纹理边框 */
+        .card::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: var(--card-radius);
+        }
+
+        /* 3. 光效层 */
+        .card-glare, .card-shine {
+            position: absolute;
+            inset: 0;
+            border-radius: var(--card-radius);
+            pointer-events: none; /* 必须穿透，否则挡住鼠标 */
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* 高光 */
+        .card-glare {
+            background: radial-gradient(
+                farthest-corner circle at var(--pointer-x) var(--pointer-y),
+                rgba(255, 255, 255, 0.8) 0%,
+                rgba(255, 255, 255, 0.1) 40%,
+                transparent 80%
+            );
+            mix-blend-mode: overlay;
+        }
+
+        /* 镭射 */
+        .card-shine {
+            background: linear-gradient(
+                115deg,
+                transparent 20%,
+                rgba(0, 255, 204, 0.5) 45%,
+                rgba(255, 0, 204, 0.5) 55%,
+                transparent 80%
+            );
+            background-size: 300% 300%;
+            background-position: var(--bg-x) var(--bg-y);
+            mix-blend-mode: color-dodge;
+        }
+        
+        .hint {
+            position: absolute;
+            bottom: -30px;
+            color: #666;
+            width: 100%;
+            text-align: center;
+            font-size: 12px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <label for="fileIn" class="file-btn">📂 上传图片</label>
+        <input type="file" id="fileIn" accept="image/*">
+        
+        <div class="input-group">
+            <input type="text" id="urlIn" placeholder="输入图片链接...">
+            <button id="loadBtn">加载</button>
+        </div>
+    </div>
+
+    <!-- 关键结构：Scene 包裹 Card -->
+    <div class="scene" id="scene">
+        <div class="card" id="card">
+            <div class="card-shine"></div>
+            <div class="card-glare"></div>
+        </div>
+        <div class="hint">正在读取图片尺寸...</div>
+    </div>
+
+    <script>
+        const scene = document.getElementById('scene');
+        const card = document.getElementById('card');
+        const glare = document.querySelector('.card-glare');
+        const shine = document.querySelector('.card-shine');
+        const hint = document.querySelector('.hint');
+
+        // --- 核心交互逻辑 ---
+
+        scene.addEventListener('mousemove', (e) => {
+            // 1. 鼠标移入时，必须瞬间响应，不能有延迟
+            card.style.transition = 'none';
+
+            const rect = scene.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            
+            // 旋转计算
+            const rotateX = ((y - centerY) / centerY) * -15; // 上下翻转
+            const rotateY = ((x - centerX) / centerX) * 15;  // 左右翻转
+
+            // 应用变换
+            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+
+            // 光效计算
+            card.style.setProperty('--pointer-x', `${x}px`);
+            card.style.setProperty('--pointer-y', `${y}px`);
+            
+            const bgX = 50 + ((x / rect.width) * 50);
+            const bgY = 50 + ((y / rect.height) * 50);
+            card.style.setProperty('--bg-x', `${bgX}%`);
+            card.style.setProperty('--bg-y', `${bgY}%`);
+
+            // 显示光效
+            glare.style.opacity = '1';
+            shine.style.opacity = '1';
+        });
+
+        scene.addEventListener('mouseleave', () => {
+            // 2. 鼠标离开时，开启平滑过渡，让它慢慢回弹
+            card.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+            
+            card.style.transform = `rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+            glare.style.opacity = '0';
+            shine.style.opacity = '0';
+        });
+
+        // --- 图片加载逻辑 ---
+        
+        const fileIn = document.getElementById('fileIn');
+        const urlIn = document.getElementById('urlIn');
+        const loadBtn = document.getElementById('loadBtn');
+
+        function updateImage(src) {
+            hint.style.opacity = '1';
+            hint.textContent = "加载中...";
+            
+            const img = new Image();
+            img.onload = () => {
+                const ratio = img.naturalWidth / img.naturalHeight;
+                
+                // 限制最大尺寸
+                let h = 500;
+                let w = h * ratio;
+                if(w > window.innerWidth * 0.9) {
+                    w = window.innerWidth * 0.9;
+                    h = w / ratio;
+                }
+
+                // 更新 CSS 变量 (控制 Scene 大小)
+                document.documentElement.style.setProperty('--card-width', `${w}px`);
+                document.documentElement.style.setProperty('--card-height', `${h}px`);
+                
+                // 更新背景
+                card.style.backgroundImage = `url('${src}')`;
+                hint.style.opacity = '0';
+            };
+            img.onerror = () => {
+                hint.textContent = "图片加载失败 (可能是跨域限制)";
+            };
+            img.src = src;
+        }
+
+        // 监听事件
+        fileIn.addEventListener('change', (e) => {
+            if(e.target.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (ev) => updateImage(ev.target.result);
+                reader.readAsDataURL(e.target.files[0]);
+            }
+        });
+
+        loadBtn.addEventListener('click', () => {
+            if(urlIn.value) updateImage(urlIn.value);
+        });
+
+        // 初始化提示隐藏
+        hint.style.opacity = '0';
+    </script>
+</body>
+</html>
