@@ -181,106 +181,142 @@
     </div>
 
     <script>
-        const scene = document.getElementById('scene');
-        const card = document.getElementById('card');
-        const glare = document.querySelector('.card-glare');
-        const shine = document.querySelector('.card-shine');
-        const hint = document.querySelector('.hint');
+    const scene = document.getElementById('scene');
+    const card = document.getElementById('card');
+    const glare = document.querySelector('.card-glare');
+    const shine = document.querySelector('.card-shine');
+    const hint = document.querySelector('.hint');
 
-        // --- 核心交互逻辑 ---
+    // --- 核心逻辑封装：通用处理函数 ---
+    
+    // 1. 处理移动 (无论是鼠标还是手指)
+    function handleMove(clientX, clientY) {
+        // 必须瞬间响应，关闭过渡
+        card.style.transition = 'none';
 
-        scene.addEventListener('mousemove', (e) => {
-            // 1. 鼠标移入时，必须瞬间响应，不能有延迟
-            card.style.transition = 'none';
-
-            const rect = scene.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            
-            // 旋转计算
-            const rotateX = ((y - centerY) / centerY) * -15; // 上下翻转
-            const rotateY = ((x - centerX) / centerX) * 15;  // 左右翻转
-
-            // 应用变换
-            card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
-
-            // 光效计算
-            card.style.setProperty('--pointer-x', `${x}px`);
-            card.style.setProperty('--pointer-y', `${y}px`);
-            
-            const bgX = 50 + ((x / rect.width) * 50);
-            const bgY = 50 + ((y / rect.height) * 50);
-            card.style.setProperty('--bg-x', `${bgX}%`);
-            card.style.setProperty('--bg-y', `${bgY}%`);
-
-            // 显示光效
-            glare.style.opacity = '1';
-            shine.style.opacity = '1';
-        });
-
-        scene.addEventListener('mouseleave', () => {
-            // 2. 鼠标离开时，开启平滑过渡，让它慢慢回弹
-            card.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
-            
-            card.style.transform = `rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-            glare.style.opacity = '0';
-            shine.style.opacity = '0';
-        });
-
-        // --- 图片加载逻辑 ---
+        const rect = scene.getBoundingClientRect();
+        // 计算相对坐标
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
         
-        const fileIn = document.getElementById('fileIn');
-        const urlIn = document.getElementById('urlIn');
-        const loadBtn = document.getElementById('loadBtn');
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+        
+        // 旋转计算 (移动端可以稍微加大一点灵敏度)
+        const rotateX = ((y - centerY) / centerY) * -18; // 稍微加大角度
+        const rotateY = ((x - centerX) / centerX) * 18;
 
-        function updateImage(src) {
-            hint.style.opacity = '1';
-            hint.textContent = "加载中...";
+        // 应用变换
+        card.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`;
+
+        // 光效计算
+        card.style.setProperty('--pointer-x', `${x}px`);
+        card.style.setProperty('--pointer-y', `${y}px`);
+        
+        const bgX = 50 + ((x / rect.width) * 50);
+        const bgY = 50 + ((y / rect.height) * 50);
+        card.style.setProperty('--bg-x', `${bgX}%`);
+        card.style.setProperty('--bg-y', `${bgY}%`);
+
+        // 显示光效
+        glare.style.opacity = '1';
+        shine.style.opacity = '1';
+    }
+
+    // 2. 处理离开/结束 (复位)
+    function handleReset() {
+        // 开启平滑过渡，产生回弹效果
+        card.style.transition = 'transform 0.6s cubic-bezier(0.23, 1, 0.32, 1)';
+        
+        card.style.transform = `rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+        glare.style.opacity = '0';
+        shine.style.opacity = '0';
+    }
+
+    // --- 事件监听：PC端 (鼠标) ---
+
+    scene.addEventListener('mousemove', (e) => {
+        handleMove(e.clientX, e.clientY);
+    });
+
+    scene.addEventListener('mouseleave', handleReset);
+
+    // --- 事件监听：移动端 (触摸) ---
+
+    // 触摸开始：为了防止闪烁，开始时也关闭动画
+    scene.addEventListener('touchstart', (e) => {
+        card.style.transition = 'none';
+        // 如果想一按下去就动，可以这里也调用 handleMove
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+    }, { passive: false });
+
+    // 触摸移动：关键逻辑
+    scene.addEventListener('touchmove', (e) => {
+        // ⚠️ 关键：阻止默认的页面滚动行为
+        // 否则手指动的时候，是页面在滚动，而不是卡片在动
+        e.preventDefault(); 
+        
+        const touch = e.touches[0];
+        handleMove(touch.clientX, touch.clientY);
+    }, { passive: false }); // passive: false 是为了允许 preventDefault 生效
+
+    // 触摸结束：复位
+    scene.addEventListener('touchend', handleReset);
+    scene.addEventListener('touchcancel', handleReset);
+
+
+    // --- 图片加载逻辑 (保持不变) ---
+    
+    const fileIn = document.getElementById('fileIn');
+    const urlIn = document.getElementById('urlIn');
+    const loadBtn = document.getElementById('loadBtn');
+
+    function updateImage(src) {
+        hint.style.opacity = '1';
+        hint.textContent = "加载中...";
+        
+        const img = new Image();
+        img.onload = () => {
+            const ratio = img.naturalWidth / img.naturalHeight;
             
-            const img = new Image();
-            img.onload = () => {
-                const ratio = img.naturalWidth / img.naturalHeight;
-                
-                // 限制最大尺寸
-                let h = 500;
-                let w = h * ratio;
-                if(w > window.innerWidth * 0.9) {
-                    w = window.innerWidth * 0.9;
-                    h = w / ratio;
-                }
-
-                // 更新 CSS 变量 (控制 Scene 大小)
-                document.documentElement.style.setProperty('--card-width', `${w}px`);
-                document.documentElement.style.setProperty('--card-height', `${h}px`);
-                
-                // 更新背景
-                card.style.backgroundImage = `url('${src}')`;
-                hint.style.opacity = '0';
-            };
-            img.onerror = () => {
-                hint.textContent = "图片加载失败 (可能是跨域限制)";
-            };
-            img.src = src;
-        }
-
-        // 监听事件
-        fileIn.addEventListener('change', (e) => {
-            if(e.target.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (ev) => updateImage(ev.target.result);
-                reader.readAsDataURL(e.target.files[0]);
+            // 移动端适配：防止卡片比屏幕还宽
+            const screenW = window.innerWidth;
+            let maxWidth = screenW * 0.85; // 留出一点边距
+            
+            let h = 500;
+            let w = h * ratio;
+            
+            // 如果计算出的宽度超过屏幕宽度的85%，强行缩小
+            if(w > maxWidth) {
+                w = maxWidth;
+                h = w / ratio;
             }
-        });
 
-        loadBtn.addEventListener('click', () => {
-            if(urlIn.value) updateImage(urlIn.value);
-        });
+            document.documentElement.style.setProperty('--card-width', `${w}px`);
+            document.documentElement.style.setProperty('--card-height', `${h}px`);
+            
+            card.style.backgroundImage = `url('${src}')`;
+            hint.style.opacity = '0';
+        };
+        img.onerror = () => {
+            hint.textContent = "加载失败";
+        };
+        img.src = src;
+    }
 
-        // 初始化提示隐藏
-        hint.style.opacity = '0';
+    fileIn.addEventListener('change', (e) => {
+        if(e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => updateImage(ev.target.result);
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+
+    loadBtn.addEventListener('click', () => {
+        if(urlIn.value) updateImage(urlIn.value);
+    });
+
+    hint.style.opacity = '0';
     </script>
 </body>
 </html>
