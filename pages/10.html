@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIMESIS 详细游戏指南 [怪物/物品/地点]</title>
+    <style>
+        body {
+            background-color: #1b2838;
+            color: #acb2b8;
+            font-family: "Motiva Sans", Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1b2838;
+        }
+        .guide-header {
+            background-color: #00000033;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 5px solid #66c0f4;
+        }
+        .guide-image {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin: 15px auto;
+            border-radius: 4px;
+            border: 1px solid #3e606f;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        h1 {
+            color: #ffffff;
+            font-size: 32px;
+            margin-top: 0;
+            font-weight: normal;
+        }
+        h2 {
+            color: #66c0f4;
+            border-bottom: 1px solid #3e606f;
+            padding-bottom: 5px;
+            margin-top: 40px;
+            font-size: 24px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        h3 {
+            color: #d2d2d2;
+            font-size: 18px;
+            margin-top: 25px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        p {
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        ul {
+            list-style-type: square;
+            margin-left: 20px;
+            padding-left: 0;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            color: #ffffff;
+            font-weight: bold;
+        }
+        .warning {
+            color: #ffcc00;
+            font-style: italic;
+        }
+        .box {
+            background-color: #2a475e;
+            padding: 15px;
+            border-radius: 3px;
+            margin: 15px 0;
+        }
+        .item-card {
+            background-color: #00000033;
+            border: 1px solid #2a475e;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .item-name {
+            color: #66c0f4;
+            font-size: 18px;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #2a475e;
+            padding-bottom: 5px;
+        }
+        .tip {
+            color: #8f98a0;
+            font-style: italic;
+            border-left: 3px solid #67c1f5;
+            padding-left: 10px;
+            margin-top: 10px;
+        }
+        a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+        a:hover {
+            color: #66c0f4;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #626366;
+            font-size: 12px;
+            border-top: 1px solid #2a475e;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="guide-header">
+        <h1>MIMESIS 完整指南 [怪物/物品/地点]</h1>
+        <!-- 指南封面 -->
+        <img src="https://images.steamusercontent.com/ugc/9628356926145359307/D902697D87241383A43A38CA015A1A1F7A0D549F/?imw=128&imh=128&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true" alt="指南封面" class="guide-image">
+        
+        <p>作者：<span class="highlight">вайб</span> | 翻译：AI</p>
+        <p>游戏指南 - 在这里你可以查阅到关于商店物品、各类怪物以及地图上可拾取道具的详细信息。</p>
+        <p class="warning">⚠️ 注意：游戏目前处于抢先体验阶段（Early Access），部分信息可能会随版本更新而发生变化。本指南将随补丁发布和新内容的发现而持续更新。</p>
+    </div>
+
+    <h2>🧩 MIMESIS 是什么？</h2>
+    <p>MIMESIS 是一款支持 1-4 名玩家的<strong>合作恐怖游戏</strong>。</p>
+    <p>你们的主要目标是收集资源（Scraps/废料），修理有轨电车，并赶在“诅咒之雨”开始之前逃离。</p>
+    <p>但在这个游戏中，最危险的往往不是那些怪物，而是<strong>你们自己</strong>。</p>
+    <p>游戏会生成一种叫做“拟态”（Mimesis/双胞胎）的生物，它们看起来和玩家一模一样，并会试图杀死你们。</p>
+
+    <h2>🚇 游戏核心机制</h2>
+    
+    <h3>游戏前须知</h3>
+    <ul>
+        <li><strong>收集 "Scraps"（废料）</strong> — 这是游戏中的通用垃圾和物品，既可以出售换钱，也用于修理电车以及购买有用的道具。</li>
+        <li><strong>修理电车</strong> — 想要赢得游戏，你们必须积累足够数量的资源并将电车彻底修好。</li>
+        <li><strong>小心克隆体</strong> — 敌人可能伪装成你队友的样子，外表一模一样。</li>
+        <li><strong>天气影响</strong> — 当雨开始下大后，生存难度会倍增，辐射值的积累速度也会显著加快。</li>
+        <li><strong>合作决定一切</strong> — 独狼玩家在这里活不长。</li>
+    </ul>
+
+    <h3>深入了解流程</h3>
+    
+    <div class="box">
+        <span class="highlight">维修基地 / 避难所</span>
+        <!-- 基地 -->
+        <img src="https://images.steamusercontent.com/ugc/9576785420337778574/B74F011BC830CACA801AAE4AB38A95F711B0048C/" alt="维修基地" class="guide-image">
+        <p>你们作为一群幸存者（最多4人）在灾难性的降雨过后开始游戏。</p>
+        <p>初始资金为 <strong>$100</strong>，用于购买最基础的必需品。（强烈建议开局给每位玩家都买一个手电筒，否则寸步难行）。</p>
+        <p class="tip">注：请注意物品价格是动态的，务必检查当前价格。此外，未使用的资金将会丢失，一旦选择地点出发，剩余金额会归零。</p>
+    </div>
+
+    <div class="box">
+        <span class="highlight">选择地点</span>
+        <!-- 地图选择 -->
+        <img src="https://images.steamusercontent.com/ugc/9745653606809819552/E8EAED90C21C3F471170991122FBBB80B52CE8F7/" alt="地图选择" class="guide-image">
+        <p>你们需要共同决定去哪里搜寻资源。游戏目前主要有三个地点：<strong>工厂 (Factory)、地铁 (Subway)、废弃房屋 (Abandoned House)</strong>。</p>
+        <p>通常情况下，只有工厂是初始开放的，其他地点会在第一次修好电车后解锁。</p>
+        <p class="tip">建议：总是优先选择资源最丰富的地点。其次，优先考虑地图的“污染程度”而不是“怪物数量”，因为喝排毒果汁消除辐射比对付成群的敌对生物要容易得多。</p>
+    </div>
+
+    <div class="box">
+        <span class="highlight">探索与搜刮 (Looting)</span>
+        <p>当前的任务是凑齐一定数量的钱（第一次通常是 $190），并将获取的资源带回交通工具（在车厢内按 "G" 键将物品扔进电车库存）。</p>
+        <p>对于那些你们还没探索过的区域，请尽量保持门是关闭状态。</p>
+    </div>
+
+    <div class="box">
+        <span class="highlight">返回电车</span>
+        <p>成功（或尝试）获取资源后，你们需要返回电车车厢，等待所有玩家集合。</p>
+        <p>只要还有其他活着的玩家，你也可以一个人先启动电车撤离，但要注意：<strong>队友身上的战利品将不会被计算在内</strong>。</p>
+        <p>在彻底修好电车前，总是需要进行**三次**外出探索，之后电车会进入最终维修状态，下一个目的地就是维修基地。只有在第4天你们才能到达那里，无法提前到达。</p>
+    </div>
+
+    <h2>🗺️ 地图特性、陷阱及其他</h2>
+    <p>游戏中有各种随着流程出现的地图特性。它们既可能成为通关的阻碍，也可能提供帮助。</p>
+
+    <div class="item-card">
+        <span class="item-name">🧃 排毒果汁 (Detox Juice)</span>
+        <!-- 排毒果汁 -->
+        <img src="https://images.steamusercontent.com/ugc/14775220715122257180/8252851D25C1903EF8D026CB8B4BB7C0A40D4521/" alt="排毒果汁" class="guide-image">
+        <p><strong>特性：</strong> 每张地图上固定有两台排毒果汁贩卖机，其特殊之处在于可以用地图上的<strong>任何物品</strong>进行交换获得（*商店购买的物品除外）。一台通常位于室外某处，另一台则位于建筑主出口的门边。</p>
+        <p>使用后能显著降低角色的辐射值，为你争取更多宝贵的探索时间。</p>
+        <p class="tip">建议：在重度污染的地图上务必弄到手，可以把它放在出口处，按需使用。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">⚡ 插座</span>
+        <!-- 插座 -->
+        <img src="https://images.steamusercontent.com/ugc/17510599117131986666/B9FF50B49897020AC70772C335B60DA6FBB92DB7/" alt="插座" class="guide-image">
+        <p><strong>特性：</strong> 电车内以及建筑的随机房间里分布着插座，可以为各种电子物品充电。</p>
+        <p class="tip">建议：它们很容易被发现，因为会有红色的圆圈高亮显示。路过时注意检查手电筒和其他物品的电量，也许它们快没电了。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🌧️☠️ 毒雨</span>
+        <!-- 毒雨 -->
+        <img src="https://images.steamusercontent.com/ugc/17779050581694036803/C80B07E6D31ECE5B3CA644EC95321D3582D68368/" alt="毒雨" class="guide-image">
+        <p><strong>特性：</strong> 在污染度较高的地图上会周期性下起毒雨，站在雨中时，辐射积累速度比平时快得多，且视野会大幅降低。</p>
+        <p class="tip">建议：看到下雨图标时，最好在建筑物或电车里躲避。如果没有时间或选择，可以事后喝排毒果汁来补救。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">💦☠️ 污染喷雾器</span>
+        <!-- 喷雾器 -->
+        <img src="https://images.steamusercontent.com/ugc/10173796976464637658/3B2AE3C86FBC6FDE2EAAAAE82FF453E5176E4187/" alt="喷雾器" class="guide-image">
+        <p><strong>特性：</strong> 某些房间的天花板装有喷雾器，喷出的不是普通水，而是受污染的液体，会大幅增加玩家的辐射值。</p>
+        <p class="tip">建议：可以快速跑过该房间，只要不在里面停留过久即可。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">☁️ 气体 (Gas)</span>
+        <!-- 气体 (新增占位图) -->
+        <img src="https://images.steamusercontent.com/ugc/14157382638530547565/826A1E6C557B7C4FCF1F1747DBA5532FBA032681/" alt="气体" class="guide-image">
+        <p><strong>特性：</strong> 就像喷雾器一样，某些房间会释放非毒性气体。它绝对是无害的。它的机制（Gimmick）在于改变声音，你的语音可能会变得非常尖细（像吸了氦气），也可能变得非常低沉。</p>
+        <p class="tip">建议：房间是无害的，没有必要快速逃离。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🕹️ 秘密走廊</span>
+        <!-- 秘密走廊 -->
+        <img src="https://images.steamusercontent.com/ugc/9744444110738932780/FDD4313670D67F6FD381130D7D3190333748C8BE/" alt="秘密走廊" class="guide-image">
+        <p><strong>特性：</strong> 探索时你可能会遇到带有拉杆的房间。需要按住 "E" 键来激活。使用时会打开通往其他房间的隧道，但进入这可能会花费更多时间。</p>
+        <p class="tip">建议：一个人通常无法有效使用该房间，因为需要一直按住按键，否则门会关闭。战术用法：可以将怪物引诱进隧道，然后在它们进入后松开拉杆，将其困死或杀死。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🏋🏽 称重走廊</span>
+        <!-- 称重走廊 -->
+        <img src="https://images.steamusercontent.com/ugc/16513144679594320008/E58E0765B10AFB4D62AFE4FF28D7E8EB3676C203/" alt="称重走廊" class="guide-image">
+        <p><strong>特性：</strong> 除了秘密走廊外还有称重走廊，只有当背包重量符合要求（房间上方牌子有提示）时才能安全通过。如果不符合重量要求，防御炮塔会启动并射击，造成巨额伤害，通常会导致直接死亡。</p>
+        <p class="tip">建议：看到这种走廊想通过时，务必先检查并调整你的负重。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🚪 欺诈之门 (Fake Door)</span>
+        <!-- 假门 -->
+        <img src="https://images.steamusercontent.com/ugc/10710800138217643271/2D917B86DADBC964C4B47554A2FCE1D77D578E62/" alt="欺诈之门" class="guide-image">
+        <p><strong>特性：</strong> 地图上除了普通门外，还有欺诈之门。打开时会伸出一只手把你抓走，并传送到地图的随机位置。这种门本身不造成伤害。结果可能有利（把你传送到出口附近），也可能有害（把你扔到地图深处）。</p>
+        <p class="tip">建议：几乎无法从外观上分辨这种门，唯一的迹象是它可能出现在不太常规的位置（比如不自然的墙壁上）。</p>
+    </div>
+
+    <h2>🛒 商店与物品</h2>
+    <p>商店使用游戏资源——“Scrap”（废料）或零件进行交易。没有资源几乎没法进行游戏。</p>
+    <p class="warning">注意：某些物品（例如：最终战的撬棍或开启的风扇）在<strong>下雨时会带电</strong>。如果不扔掉或关闭它们，你会被雷击中，导致眩晕约1.5秒并受到中等伤害。</p>
+
+    <div class="item-card">
+        <span class="item-name">🔦 手电筒</span>
+        <!-- 手电筒 -->
+        <img src="https://images.steamusercontent.com/ugc/14325922153988483975/C11EE27AC3B1D3F3492FEE61288A6D24F39460C6/" alt="手电筒" class="guide-image">
+        <p><strong>描述：</strong> 基础且必不可少的物品。提供大量照明，因为室内没有它几乎伸手不见五指。</p>
+        <p class="tip">建议：一定要在开局购买。注意电量，别在关键时刻没电。可以在电车或地图随机插座充电。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🧭 指南针</span>
+        <!-- 指南针 -->
+        <img src="https://images.steamusercontent.com/ugc/14418607830165758158/0235F581D3705618FFC40E7563EBE1831E37B9A2/" alt="指南针" class="guide-image">
+        <p><strong>描述：</strong> 红色箭头始终指向出口方向。缺点是会占用一个宝贵的物品格子。</p>
+        <p class="tip">建议：一般不建议使用，因为占格子。极少数情况下可以给路痴队友，或者在地铁和废弃房屋这种比工厂更复杂的地图使用。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐥 探测器</span>
+        <!-- 探测器 -->
+        <img src="https://images.steamusercontent.com/ugc/16583196125951808756/82B2FCE9D849AC524AC1EE37984EBD40F541E89C/" alt="探测器" class="guide-image">
+        <p><strong>描述：</strong> 可以识别站在你面前的是拟态（Mimesis）还是真人玩家。</p>
+        <p class="tip">建议：不建议购买，原因如下：占格子，且前期太贵。不如想个暗号或者问个真人验证问题，比如“2+2等于几？”。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🏏 熊牙棒 (Bear Bat)</span>
+        <!-- 棒球棍 -->
+        <img src="https://images.steamusercontent.com/ugc/9816846404004361248/51DADD568BFFCB3D0C5FE6F5E025FDB6DEF23C7B/" alt="熊牙棒" class="guide-image">
+        <p><strong>描述：</strong> 基础近战武器，能杀死大多数怪物。早期对付克隆体非常有效。</p>
+        <p class="tip">建议：开局好用，后期霰弹枪效率更高。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🎾 电蚊拍</span>
+        <!-- 电蚊拍 -->
+        <img src="https://images.steamusercontent.com/ugc/9718404300693702036/E8A0E9CBF8B0AC961C7BCD7FBB4B652126E7DE6D/" alt="电蚊拍" class="guide-image">
+        <p><strong>描述：</strong> 释放电击，能使目标眩晕几秒钟。可用插座充电。</p>
+        <p class="tip">建议：对付那些难以逃脱或速度很快的怪物很有效。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🔫 霰弹枪</span>
+        <!-- 霰弹枪 -->
+        <img src="https://images.steamusercontent.com/ugc/15388820565691038617/D85CE0434F64C9C0B59825493DC72D39BAB75D80/" alt="霰弹枪" class="guide-image">
+        <p><strong>描述：</strong> 游戏中唯一的高效远程武器。需要单独购买子弹。一次只能装填一发。</p>
+        <p class="tip">建议：推荐在游戏后期或高危地图购买并携带。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🟣 彩弹枪 (Paintball)</span>
+        <!-- 彩弹枪 -->
+        <img src="https://images.steamusercontent.com/ugc/11902637979988908881/B10936F1AC0B67E83419172B76E1852FA6D5DB2C/" alt="彩弹枪" class="guide-image">
+        <p><strong>描述：</strong> 投掷后留下色斑，踩上去会留下脚印。痕迹消失得很快。有5发载弹量，用完消失。</p>
+        <p class="tip">建议：有助于防止迷路并顺着脚印返回，但最好做短距离标记，因为痕迹不持久。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐕‍🦺 小狗玩偶</span>
+        <!-- 小狗 -->
+        <img src="https://images.steamusercontent.com/ugc/17556131896097657422/656DD1F97957411594514B7B59677DE9C150820B/" alt="小狗玩偶" class="guide-image">
+        <p><strong>描述：</strong> 防止迷路最有用的物品。扔在地上会发出毛绒玩具的声音。有100点电量，每次跳动都会减少。可在插座充电。</p>
+        <p class="tip">建议：最好放在建筑出口，或者你暂时拿不走的物资堆旁边，以便轻松找回且不迷路。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">💣 故障炸弹</span>
+        <!-- 炸弹 -->
+        <img src="https://images.steamusercontent.com/ugc/15824053349254094707/EF3D4A5FC36242453401EDCF8F7068EE31704193/" alt="故障炸弹" class="guide-image">
+        <p><strong>描述：</strong> 拿在手里会缓慢发出滴答声，过一会频率加快。快响时必须扔掉，过几秒再捡起来。最多捡起2次，第3次会直接爆炸。这东西也有几率从排毒果汁机里掉出来代替果汁。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">✇💨 风扇</span>
+        <!-- 风扇 -->
+        <img src="https://images.steamusercontent.com/ugc/14634849058245451476/85D84B7B20B166001F77ED9C754F6D205BDA843D/" alt="风扇" class="guide-image">
+        <p><strong>描述：</strong> 拿在手里可以激活。扇叶转动时，你说话的声音会发生变调。如果在雨天开启，会短路引来雷劈，导致眩晕和伤害。</p>
+    </div>
+
+    <h2>👾 怪物（敌人）</h2>
+    <p>主要威胁是模仿生物，称为<strong>“Mimesis”</strong>。它们在“诅咒之雨”后出现，能模仿普通幸存者的声音、手势和动作。</p>
+
+    <div class="item-card">
+        <span class="item-name">👥 拟态 (Clone/Mimic)</span>
+        <!-- 拟态 -->
+        <img src="https://images.steamusercontent.com/ugc/11571471819829240304/68B03EB843FF1133C435FFB396EF9A4AB0C38C10/" alt="拟态" class="guide-image">
+        <p><strong>描述：</strong> 玩家的完美复制品（外貌和声音）。它们会模仿你的动作，然后突然发起袭击，甚至可以使用武器。</p>
+        <p class="tip">建议：注意配合——如果有人不说话、行为怪异，或者无法回答验证问题，那可能是个冒牌货。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">👥💣 爆破拟态 (Bombesis)</span>
+        <!-- 爆破拟态 -->
+        <img src="https://images.steamusercontent.com/ugc/11876182185690817701/7DF65336EBE8E948867553E0C0CB08C7D11B4AFC/" alt="爆破拟态" class="guide-image">
+        <p><strong>描述：</strong> 脸上带有一只松鼠面具的特殊拟态。靠近你时会突然掏出炸弹冲向你，几秒后自爆。</p>
+        <p class="tip">建议：注意你的耐力条，当看到它掏出炸弹时，立刻转身快跑。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐒 猴子 (大猩猩妈妈)</span>
+        <!-- 猴子 -->
+        <img src="https://images.steamusercontent.com/ugc/18383151464493296758/F91FC3C4D0F9CFE47F70FEFE8BB04E4FE167D30A/" alt="猴子" class="guide-image">
+        <p><strong>描述：</strong> 相对和平的生物，通常以正常速度奔跑。一旦抓住玩家，它会加速把你带到地图的随机位置，本身不造成伤害（有时如果你离得远，它把你带到出口附近反而有帮助）。</p>
+        <p class="tip">建议：很容易逃脱或躲藏。如果不幸被抓，可以尝试狂按 WASD 和跳跃键，它可能会放开你。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">👹 音响象 (Heavid)</span>
+        <!-- 音响象 -->
+        <img src="https://images.steamusercontent.com/ugc/12831961776385560479/819CCD3C2CF7C99EA6AB699802F033B42729CC54/" alt="音响象" class="guide-image">
+        <p><strong>描述：</strong> 无害生物，带着音响到处走动，完全沉浸在自己的音乐世界中。</p>
+        <p class="tip">建议：别故意挡它的路，它就不会攻击你。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🦉 猫头鹰 (Standing Owl)</span>
+        <!-- 猫头鹰 -->
+        <img src="https://images.steamusercontent.com/ugc/14972354461162822909/95E9B4F092CAEBAEAB162EF7FFF8A9D00FC3F7A5/" alt="猫头鹰" class="guide-image">
+        <p><strong>描述：</strong> 会发出猫头鹰叫声，原地不动一段时间，然后开始移动。如果贴脸靠近，它会旋转身体并造成伤害。攻击有约1秒的延迟。被棒球棍打2下就会死。</p>
+        <p class="tip">建议：绕开它走就行，它通常不会主动动你。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐿️ 松鼠 (Quokka-Glider)</span>
+        <!-- 松鼠 -->
+        <img src="https://images.steamusercontent.com/ugc/13334187810515866136/DA9D763CD5785159AAC0F1944573F4B58509368D/" alt="松鼠" class="guide-image">
+        <p><strong>描述：</strong> 小型生物，会跳到玩家脸上遮挡视线。造成眩晕效果，如果不及时弄下来会迅速致死。</p>
+        <p class="tip">建议：别站着不动，如果它跳到了身上，赶紧想办法把它甩下来。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🦆🔮 指挥鹅 (Maestro)</span>
+        <!-- 指挥鹅 -->
+        <img src="https://images.steamusercontent.com/ugc/18001826632429408150/9CF4CB80CE21D1AEBFC29A1D3A20D292F4B6DE10/" alt="指挥鹅" class="guide-image">
+        <p><strong>描述：</strong> 穿着西装、拿着指挥棒的鹅。跑得比玩家快，会进行攻击（伤害不高），但每次攻击都会造成眩晕。</p>
+        <p class="tip">建议：如果你保持沉默（不使用麦克风/游戏内语音），它就不会碰你。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐇 变异野兔 (Brute Rabbit)</span>
+        <!-- 兔子 -->
+        <img src="https://images.steamusercontent.com/ugc/17528996007679788862/0CC565552E73F5D123D6A2677D0138A39DF5201B/" alt="变异野兔" class="guide-image">
+        <p><strong>描述：</strong> 具有攻击性的生物，两下就能打死人。行动相对较慢，霰弹枪需要三枪才能打死。</p>
+        <p class="tip">建议：最好跑远点，它很容易发现你。或者可以尝试对着它大叫，有机会把它吓跑。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐰 死神兔子 (Sentinel/哨兵)</span>
+        <!-- 死神兔子 -->
+        <img src="https://images.steamusercontent.com/ugc/15415528413721935230/DCB85620AE7206EE22DA99C5B64A2C93605C21D6/" alt="死神兔子" class="guide-image">
+        <p><strong>描述：</strong> 最具攻击性、最危险的生物，拥有一击必杀的能力，且移动速度极快。</p>
+        <p class="tip">建议：<strong>如果你看着它——它就不会动。</strong>（类似“哭泣天使”机制）。如果你在它静止时攻击它，它会无视视线规则直接揍你。</p>
+    </div>
+
+    <div class="item-card">
+        <span class="item-name">🐑 警长公羊 (RamBlam)</span>
+        <!-- 公羊 -->
+        <img src="https://images.steamusercontent.com/ugc/14110976921087875935/D46138033123B501914679A088D3CF4E0EF0201C/" alt="警长公羊" class="guide-image">
+        <p><strong>描述：</strong> 手持双管枪的公羊。开枪前会跳起来转枪，然后开始不分敌我地混乱射击，既打你也会打拟态。</p>
+        <p class="tip">建议：如果你被很多拟态包围，它可能很有用，因为它会把拟态误认为你而杀掉它们。如果周围没人，最好离它远点。</p>
+    </div>
+
+    <h2>💬 结语</h2>
+    <p>MIMESIS 是对合作恐怖类型的一次新鲜且独特的尝试。</p>
+    <!-- 结语 -->
+    <img src="https://images.steamusercontent.com/ugc/15152582995859785955/FD537580760FD1FF6CE8A8203B281E00B2166B7B/" alt="结语图片" class="guide-image">
+    <p class="highlight" style="text-align: center; margin-top: 20px;">💀 相信你的理智，而非听到的声音。</p>
+
+    <div class="footer">
+        👍 感谢阅读！<br>
+        本文内容基于 Steam 社区指南翻译整理。
+    </div>
+</div>
+
+</body>
+</html>
