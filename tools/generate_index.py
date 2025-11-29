@@ -220,7 +220,7 @@ def build_index(folders, root_files, files_by_folder):
 </head>
 <body>
   <header>
-    <h1><a href="https://github.com/PioneerZHA/gemini-web-lab">GeminiWebLab</a> 导航页</h1>
+    <h1><a href="https://github.com/PioneerZHA/gemini-web-lab">GWL</a>导航页</h1>
     <div class="chip" id="countChip">0 个条目</div>
   </header>
   <p class="subtitle">这些是我用 Gemini 生成的一些网页。</p>
