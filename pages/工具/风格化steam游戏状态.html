@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>正在跳转...</title>
+  <style>
+    /* --- 核心变量 --- */
+    :root {
+      --bg: #0b0f17;
+      --bg-soft: #111827;
+      --card: rgba(17, 24, 39, 0.9);
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --brand: #8b5cf6;  /* 紫色 */
+      --brand-2: #22d3ee; /* 青色 */
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0; padding: 0;
+      color: var(--text);
+      /* 背景光斑 */
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(139,92,246,0.15), transparent 55%),
+        radial-gradient(900px 500px at 110% 0%, rgba(34,211,238,0.10), transparent 60%),
+        linear-gradient(180deg, #070a11 0%, var(--bg) 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    /* --- 卡片样式 --- */
+    .jump-card {
+      width: 90%;
+      max-width: 480px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 40px 30px;
+      text-align: center;
+      backdrop-filter: blur(12px);
+      animation: floatUp 0.8s ease-out forwards;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 2rem;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 15px rgba(139,92,246,0.3));
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 30px;
+    }
+
+    /* --- 网址显示框 --- */
+    .url-display-box {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    .url-text {
+      font-family: 'Consolas', monospace;
+      color: var(--brand-2);
+      font-size: 0.9rem;
+      word-break: break-all;
+    }
+
+    /* --- 倒计时区域 --- */
+    .timer-container { margin-bottom: 35px; }
+
+    .timer-text {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--text);
+      text-shadow: 0 0 20px rgba(139, 92, 246, 0.5);
+    }
+    
+    .timer-unit { font-size: 1rem; color: var(--muted); margin-left: 5px; }
+
+    /* --- 优化后的进度条 (重点) --- */
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 15px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 100%; /* 初始宽度 */
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 10px var(--brand);
+      border-radius: 10px;
+      transform-origin: left center;
+      /* 动画属性将在 JS 中设置，以匹配倒计时时间 */
+    }
+
+    /* --- 关键帧动画：从全宽缩减到0 --- */
+    @keyframes shrinkWidth {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+
+    /* --- 按钮样式 --- */
+    .btn-jump {
+      display: inline-flex;
+      padding: 12px 32px;
+      border-radius: 99px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-jump:hover {
+      background: rgba(139, 92, 246, 0.15);
+      border-color: var(--brand);
+      box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    /* --- 底部状态灯 --- */
+    .status-row {
+      margin-top: 25px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      box-shadow: 0 0 12px rgba(139,92,246,0.8);
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes floatUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.4); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <div class="jump-card">
+    <h1>即将跳转</h1>
+    <p class="subtitle">该项目已作为Github项目部署，正在前往预览页面。</p>
+
+    <!-- 网址 -->
+    <div class="url-display-box">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted)"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+      <span class="url-text" id="url-display">...</span>
+    </div>
+
+    <!-- 倒计时与进度条 -->
+    <div class="timer-container">
+      <div>
+        <span class="timer-text" id="timer">5</span>
+        <span class="timer-unit">秒</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-bar" id="progress"></div>
+      </div>
+    </div>
+
+    <a href="#" id="manual-link" class="btn-jump">立即跳转</a>
+
+    <div class="status-row">
+      <span class="dot"></span>
+      <span id="status-text">处理中...</span>
+    </div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 👇 请在这里修改目标网址 👇
+    // ==========================================
+    const targetUrl = "https://pioneerzha.github.io/geminiSteamstat/"; 
+    // ==========================================
+
+    // 配置：倒计时总秒数
+    const totalTime = 5; 
+
+    // 获取元素
+    const timerElement = document.getElementById('timer');
+    const urlDisplayElement = document.getElementById('url-display');
+    const manualLinkElement = document.getElementById('manual-link');
+    const progressBar = document.getElementById('progress');
+    const statusText = document.getElementById('status-text');
+
+    // 初始化数据
+    urlDisplayElement.innerText = targetUrl;
+    manualLinkElement.href = targetUrl;
+    timerElement.innerText = totalTime;
+
+    // 核心优化：使用 CSS Animation 实现丝滑进度条
+    // 这里通过 JS 动态设置动画时长，确保与 totalTime 变量一致
+    // linear = 匀速, forwards = 动画结束后停留在最后一帧(0%)
+    progressBar.style.animation = `shrinkWidth ${totalTime}s linear forwards`;
+
+    let timeLeft = totalTime;
+
+    // 倒计时逻辑 (只负责更新数字)
+    const countdown = setInterval(() => {
+      timeLeft--;
+      
+      // 更新数字
+      if(timeLeft >= 0) {
+        timerElement.innerText = timeLeft;
+      }
+
+      // 倒计时结束
+      if (timeLeft <= 0) {
+        clearInterval(countdown);
+        statusText.innerText = "正在进入...";
+        
+        // 稍微延迟一丁点执行跳转，让用户看到0和空进度条
+        setTimeout(() => {
+            window.location.href = targetUrl;
+        }, 200);
+      }
+    }, 1000);
+
+  </script>
+</body>
+</html>
