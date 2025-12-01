@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PROJECT: ZERO KELVIN | 78°N ARCHIVE</title>
+    
+    <!-- 引入必要的轻量级字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- GSAP for Animation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <!-- Three.js for WebGL -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-main: #dcdcdc;
+            --text-dim: #555555;
+            --accent: #ff3c00; /* Soviet Signal Red */
+            --cold: #aaddff;   /* Cherenkov Radiation Blue */
+            --font-mono: 'JetBrains Mono', monospace;
+            --font-display: 'Syncopate', sans-serif;
+            --grid-line: rgba(255, 255, 255, 0.08);
+            --easing: cubic-bezier(0.19, 1, 0.22, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; cursor: none; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-mono);
+            overflow-x: hidden;
+            width: 100vw;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* --- UI & HUD LAYERS --- */
+        #webgl-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 0;
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        #noise-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 90;
+            opacity: 0.05;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+
+        .frame-ui {
+            position: fixed;
+            z-index: 100;
+            padding: 2rem;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            mix-blend-mode: exclusion;
+        }
+
+        .frame-top, .frame-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--grid-line);
+            padding-bottom: 1rem;
+        }
+        .frame-bottom {
+            border-bottom: none;
+            border-top: 1px solid var(--grid-line);
+            padding-top: 1rem;
+            padding-bottom: 0;
+        }
+
+        .logo { font-family: var(--font-display); font-weight: 700; letter-spacing: 2px; }
+        .coords { color: var(--text-dim); font-size: 0.8rem; }
+        
+        .lang-switch {
+            pointer-events: auto;
+            display: flex;
+            gap: 1rem;
+            font-size: 0.9rem;
+        }
+        .lang-btn {
+            opacity: 0.4;
+            transition: opacity 0.3s;
+            position: relative;
+        }
+        .lang-btn.active { opacity: 1; text-decoration: underline; text-decoration-color: var(--accent); }
+        .lang-btn:hover { opacity: 1; }
+
+        /* --- CUSTOM CURSOR --- */
+        #cursor {
+            position: fixed;
+            top: 0; left: 0;
+            width: 20px; height: 20px;
+            border: 1px solid var(--text-main);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            pointer-events: none;
+            transition: width 0.3s, height 0.3s, background 0.3s;
+            mix-blend-mode: difference;
+        }
+        #cursor.hovered {
+            width: 60px; height: 60px;
+            background: var(--text-main);
+            border-color: transparent;
+            opacity: 0.5;
+        }
+
+        /* --- MAIN CONTENT --- */
+        main {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+        }
+
+        section {
+            min-height: 100vh;
+            width: 100%;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            border-bottom: 1px solid var(--grid-line);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero-title {
+            font-family: var(--font-display);
+            font-size: clamp(3rem, 8vw, 10rem);
+            line-height: 0.9;
+            text-transform: uppercase;
+            font-weight: 700;
+            mix-blend-mode: exclusion;
+        }
+        .hero-subtitle {
+            margin-top: 2rem;
+            max-width: 600px;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: var(--text-dim);
+            border-left: 2px solid var(--accent);
+            padding-left: 1.5rem;
+        }
+
+        /* Concept Section */
+        .concept-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: start;
+        }
+        .concept-num {
+            font-size: 4rem;
+            color: var(--grid-line);
+            font-family: var(--font-display);
+            margin-bottom: 1rem;
+        }
+        .concept-text h2 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            color: var(--cold);
+        }
+        .data-block {
+            background: rgba(255,255,255,0.03);
+            padding: 2rem;
+            border: 1px solid var(--grid-line);
+            margin-top: 2rem;
+            transition: 0.3s;
+        }
+        .data-block:hover {
+            border-color: var(--accent);
+            background: rgba(255,60,0,0.05);
+        }
+
+        /* Mechanism Section */
+        .mech-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .status-indicator {
+            width: 12px; height: 12px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--accent);
+            margin-bottom: 2rem;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
+        .interactive-area {
+            width: 100%;
+            height: 300px;
+            border: 1px solid var(--grid-line);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 3rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .interactive-area::before {
+            content: '';
+            position: absolute;
+            width: 1px; height: 100%;
+            background: var(--accent);
+            left: 50%;
+            opacity: 0.3;
+        }
+        .interactive-area::after {
+            content: 'INTERACTION REQUIRED';
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            font-size: 0.7rem;
+            opacity: 0.5;
+        }
+
+        /* Footer */
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+        .big-link {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 4rem);
+            text-decoration: none;
+            color: var(--text-main);
+            transition: color 0.3s;
+            position: relative;
+            display: inline-block;
+        }
+        .big-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0;
+            width: 0%; height: 5px;
+            background: var(--accent);
+            transition: width 0.5s var(--easing);
+        }
+        .big-link:hover { color: var(--accent); }
+        .big-link:hover::after { width: 100%; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .concept-grid { grid-template-columns: 1fr; }
+            .hero-title { font-size: 3.5rem; }
+            .frame-ui { padding: 1rem; }
+            #cursor { display: none; } /* Hide custom cursor on mobile */
+            * { cursor: auto; }
+        }
+
+        /* Utility classes for animation */
+        .split-char { display: inline-block; }
+        .reveal-text { overflow: hidden; }
+    </style>
+</head>
+<body>
+
+    <!-- VISUAL LAYERS -->
+    <div id="noise-overlay"></div>
+    <div id="cursor"></div>
+    <div id="webgl-container"></div>
+
+    <!-- UI LAYER -->
+    <div class="frame-ui">
+        <div class="frame-top">
+            <div class="logo">ZK-78</div>
+            <div class="coords">LAT: 78.223 N / LON: 15.646 E</div>
+        </div>
+        <div class="frame-bottom">
+            <div class="status">SYS: NORMAL</div>
+            <div class="lang-switch">
+                <div class="lang-btn active" data-lang="en">EN</div>
+                <div class="lang-btn" data-lang="cn">CN</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONTENT -->
+    <main>
+        <!-- SECTION 1: HERO -->
+        <section id="hero">
+            <div class="container">
+                <div class="reveal-text">
+                    <h1 class="hero-title" data-i18n="title">PROJECT<br>ZERO KELVIN</h1>
+                </div>
+                <div class="hero-subtitle hover-trigger" data-i18n="intro">
+                    Establishing connection with facility B-12. <br>
+                    A monument to the pursuit of absolute stillness in a thermodynamic universe.
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 2: CONCEPT -->
+        <section id="concept">
+            <div class="container">
+                <div class="concept-grid">
+                    <div class="col-left">
+                        <div class="concept-num">01</div>
+                        <div class="concept-text">
+                            <h2 data-i18n="conceptTitle">The Entropy Paradox</h2>
+                            <p data-i18n="conceptDesc">
+                                Traditional physics dictates entropy always increases. 
+                                In the permafrost of the Svalbard archipelago, 
+                                we observe a localized inversion. Time flows, but decay halts.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-right">
+                        <div class="data-block hover-trigger">
+                            <div style="font-size: 0.8rem; color: var(--accent); margin-bottom:1rem;">// CLASSIFIED LOG</div>
+                            <p style="font-family: var(--font-display); line-height: 1.4;" data-i18n="log">
+                                "The cold is not an absence of heat. 
+                                It is the presence of structure. 
+                                We are not freezing the subject; 
+                                we are archiving its molecular state."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECTION 3: MECHANISM -->
+        <section id="mechanism">
+            <div class="container mech-container">
+                <div class="status-indicator"></div>
+                <h2 style="font-family: var(--font-display); font-size: 2rem;" data-i18n="mechTitle">Core Mechanism</h2>
+                
+                <div class="interactive-area hover-trigger" id="reactor-area">
+                    <!-- JS will render canvas lines here -->
+                    <canvas id="oscillator" style="width:100%; height:100%;"></canvas>
+                </div>
+
+                <p style="max-width: 500px; color: var(--text-dim);" data-i18n="mechDesc">
+                    The Chrono-Stasis field generator relies on user observation to stabilize. 
+                    Your interaction collapses the wave function.
+                </p>
+            </div>
+        </section>
+
+        <!-- SECTION 4: FOOTER -->
+        <section id="footer" style="min-height: 50vh;">
+            <div class="container">
+                <div class="footer-content">
+                    <div>
+                        <div style="color: var(--accent); margin-bottom: 1rem;">// INITIATE PROTOCOL</div>
+                        <a href="#" class="big-link hover-trigger" data-i18n="cta">ACCESS TERMINAL</a>
+                    </div>
+                    <div style="text-align: right; color: var(--text-dim); font-size: 0.8rem;">
+                        &copy; 1984-202X SOVIET POLAR DIVISION<br>
+                        NON-COMMERCIAL RESEARCH ENTITY
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- 1. DATA & STATE MANAGEMENT ---
+        const content = {
+            en: {
+                title: "PROJECT<br>ZERO KELVIN",
+                intro: "Establishing connection with facility B-12. <br>A monument to the pursuit of absolute stillness in a thermodynamic universe.",
+                conceptTitle: "The Entropy Paradox",
+                conceptDesc: "Traditional physics dictates entropy always increases. In the permafrost of the Svalbard archipelago, we observe a localized inversion. Time flows, but decay halts.",
+                log: "\"The cold is not an absence of heat. It is the presence of structure. We are not freezing the subject; we are archiving its molecular state.\"",
+                mechTitle: "Core Mechanism",
+                mechDesc: "The Chrono-Stasis field generator relies on user observation to stabilize. Your interaction collapses the wave function.",
+                cta: "ACCESS TERMINAL"
+            },
+            cn: {
+                title: "零度<br>绝对计划",
+                intro: "正在建立与 B-12 设施的连接。<br>这是在热力学宇宙中，对绝对静止的终极探索纪念碑。",
+                conceptTitle: "熵减悖论",
+                conceptDesc: "传统物理学认为熵总是增加的。但在斯瓦尔巴群岛的永久冻土中，我们观测到了局部的逆转。时间在流逝，但衰变停止了。",
+                log: "“寒冷不是热量的缺失，而是结构的显现。我们不是在冷冻受试者，我们是在归档其分子状态。”",
+                mechTitle: "核心机制",
+                mechDesc: "时空停滞场发生器依赖于用户的观测来维持稳定。你的交互将导致波函数坍缩。",
+                cta: "接入终端"
+            }
+        };
+
+        let currentLang = 'en';
+
+        // --- 2. TEXT ANIMATION & LANG SWITCH ---
+        function updateContent(lang) {
+            const elements = document.querySelectorAll('[data-i18n]');
+            
+            // Animate out
+            gsap.to(elements, {
+                opacity: 0,
+                y: -10,
+                duration: 0.3,
+                stagger: 0.05,
+                onComplete: () => {
+                    // Update text
+                    elements.forEach(el => {
+                        const key = el.getAttribute('data-i18n');
+                        el.innerHTML = content[lang][key];
+                    });
+                    
+                    // Animate in
+                    gsap.to(elements, {
+                        opacity: 1,
+                        y: 0,
+                        duration: 0.5,
+                        stagger: 0.05,
+                        ease: "power2.out"
+                    });
+                }
+            });
+        }
+
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const lang = e.target.getAttribute('data-lang');
+                if (lang === currentLang) return;
+                
+                document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                
+                currentLang = lang;
+                updateContent(lang);
+            });
+        });
+
+        // --- 3. THREE.JS BACKGROUND (PARTICLE STORM) ---
+        const initThree = () => {
+            const container = document.getElementById('webgl-container');
+            const scene = new THREE.Scene();
+            // Fog to blend into background
+            scene.fog = new THREE.FogExp2(0x050505, 0.002);
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 2000);
+            camera.position.z = 1000;
+
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Particles
+            const geometry = new THREE.BufferGeometry();
+            const count = 2000;
+            const positions = new Float32Array(count * 3);
+            const velocities = new Float32Array(count * 3); // Store velocity
+
+            for (let i = 0; i < count * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 2000;
+                velocities[i] = 0; // Init velocity
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            // Material showing raw data/snow
+            const material = new THREE.PointsMaterial({
+                color: 0xeeeeee,
+                size: 2,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            // Mouse interaction logic
+            let mouseX = 0;
+            let mouseY = 0;
+            let targetX = 0;
+            let targetY = 0;
+
+            window.addEventListener('mousemove', (e) => {
+                mouseX = (e.clientX - window.innerWidth / 2) * 2;
+                mouseY = (e.clientY - window.innerHeight / 2) * 2;
+            });
+
+            // Animation Loop
+            const clock = new THREE.Clock();
+
+            const animate = () => {
+                requestAnimationFrame(animate);
+
+                const time = clock.getElapsedTime();
+                const positions = particles.geometry.attributes.position.array;
+
+                targetX = mouseX * 0.05;
+                targetY = mouseY * 0.05;
+
+                particles.rotation.y += 0.001;
+                particles.rotation.x += 0.0005;
+
+                // Subtle wave movement + Noise
+                for(let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    // Add subtle turbulence
+                    positions[i3 + 1] -= 0.5; // Fall down
+                    
+                    // Reset if too low
+                    if(positions[i3 + 1] < -1000) {
+                        positions[i3 + 1] = 1000;
+                    }
+
+                    // Mouse interaction influence
+                    // If near mouse (in 3D space approx), turbulence increases
+                    // Simplified: global camera rotation responds to mouse
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+
+                // Camera parallax
+                camera.position.x += (mouseX - camera.position.x) * 0.05;
+                camera.position.y += (-mouseY - camera.position.y) * 0.05;
+                camera.lookAt(scene.position);
+
+                renderer.render(scene, camera);
+            };
+
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        // --- 4. 2D CANVAS OSCILLATOR (Core Mechanism) ---
+        const initOscillator = () => {
+            const canvas = document.getElementById('oscillator');
+            const ctx = canvas.getContext('2d');
+            let width, height;
+
+            const resize = () => {
+                width = canvas.parentElement.offsetWidth;
+                height = canvas.parentElement.offsetHeight;
+                canvas.width = width;
+                canvas.height = height;
+            };
+            window.addEventListener('resize', resize);
+            resize();
+
+            let phase = 0;
+            let speed = 0.05;
+            let amplitude = 50;
+            let isHovered = false;
+
+            canvas.parentElement.addEventListener('mouseenter', () => isHovered = true);
+            canvas.parentElement.addEventListener('mouseleave', () => isHovered = false);
+
+            const draw = () => {
+                ctx.clearRect(0, 0, width, height);
+                ctx.strokeStyle = isHovered ? '#ff3c00' : '#dcdcdc'; // Orange on interaction
+                ctx.lineWidth = 2;
+                
+                // Logic: Speed up and chaotic when hovered
+                const targetSpeed = isHovered ? 0.2 : 0.02;
+                speed += (targetSpeed - speed) * 0.1;
+                
+                const targetAmp = isHovered ? 80 : 40;
+                amplitude += (targetAmp - amplitude) * 0.1;
+
+                phase += speed;
+
+                ctx.beginPath();
+                for (let x = 0; x < width; x+=5) {
+                    // Sine wave with noise
+                    let y = height/2 + Math.sin(x * 0.02 + phase) * amplitude;
+                    
+                    // Add "Glitch" if hovered
+                    if (isHovered && Math.random() > 0.9) {
+                        y += (Math.random() - 0.5) * 50;
+                    }
+
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                requestAnimationFrame(draw);
+            }
+            draw();
+        };
+
+        // --- 5. CUSTOM CURSOR & GSAP ANIMATIONS ---
+        const initUI = () => {
+            // Cursor
+            const cursor = document.getElementById('cursor');
+            const hoverTriggers = document.querySelectorAll('.hover-trigger, .lang-btn, a');
+
+            document.addEventListener('mousemove', (e) => {
+                cursor.style.left = e.clientX + 'px';
+                cursor.style.top = e.clientY + 'px';
+            });
+
+            hoverTriggers.forEach(el => {
+                el.addEventListener('mouseenter', () => cursor.classList.add('hovered'));
+                el.addEventListener('mouseleave', () => cursor.classList.remove('hovered'));
+            });
+
+            // Scroll Animations
+            gsap.registerPlugin(ScrollTrigger);
+
+            // Hero Fade In
+            gsap.from('.hero-title', {
+                duration: 1.5,
+                y: 100,
+                opacity: 0,
+                ease: "power4.out",
+                delay: 0.5
+            });
+
+            gsap.from('.hero-subtitle', {
+                duration: 1.5,
+                opacity: 0,
+                x: -20,
+                ease: "power4.out",
+                delay: 1
+            });
+
+            // Reveal Concept Numbers
+            gsap.utils.toArray('.concept-num').forEach(num => {
+                gsap.from(num, {
+                    scrollTrigger: {
+                        trigger: num,
+                        start: "top 80%",
+                        toggleActions: "play none none reverse"
+                    },
+                    x: -50,
+                    opacity: 0,
+                    duration: 1
+                });
+            });
+
+            // Parallax for Data Block
+            gsap.to('.data-block', {
+                scrollTrigger: {
+                    trigger: '.concept-grid',
+                    start: "top bottom",
+                    end: "bottom top",
+                    scrub: 1
+                },
+                y: -50
+            });
+        };
+
+        // --- INIT ---
+        window.addEventListener('DOMContentLoaded', () => {
+            initThree();
+            initOscillator();
+            initUI();
+            console.log("SYSTEM: ONLINE [78°N]");
+        });
+
+    </script>
+</body>
+</html>
