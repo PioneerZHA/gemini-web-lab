@@ -1,5 +1,4 @@
 import json
-import subprocess
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import html
@@ -11,40 +10,20 @@ def gmt8_str(ts: float) -> str:
     gmt8 = timezone(timedelta(hours=8))
     return datetime.fromtimestamp(ts, gmt8).strftime("%Y-%m-%d %H:%M GMT+8")
 
-def git_last_commit_ts(file_path: Path) -> float:
-    """
-    返回该文件在 git 中最后一次提交的时间戳（秒）。
-    若 git 不可用或文件未提交过，则退回到文件系统 mtime。
-    """
-    try:
-        # 使用 posix 路径以兼容 Git
-        rel = file_path.as_posix()
-        out = subprocess.check_output(
-            ["git", "log", "-1", "--format=%ct", "--", rel],
-            stderr=subprocess.DEVNULL,
-            text=True
-        ).strip()
-        if out:
-            return float(out)
-    except Exception:
-        pass
-    return file_path.stat().st_mtime
-
 def collect_entries():
     """
     返回：
-    - folders: 顶层文件夹列表（相对 pages/ 的路径）
-    - root_files: pages/ 顶层 html 文件
+    - folders: 顶层文件夹列表（相对 pages/ 的路径名）
     - files_by_folder: { "a": [file_dict, ...], "b": [...], "__root__": [...] }
-      file_dict: {path, name, mtime, mtime_str}
-      这里 mtime 使用 git 最后提交时间
+      file_dict: {path, name, mtime_str}
+    说明：
+    - 仅用于显示修改时间（可选），排序不使用时间。
     """
     folders = []
-    root_files = []
     files_by_folder = {}
 
     if not PAGES_DIR.exists():
-        return folders, root_files, files_by_folder
+        return folders, files_by_folder
 
     # 顶层文件夹
     for p in PAGES_DIR.iterdir():
@@ -53,36 +32,32 @@ def collect_entries():
 
     # 扫描所有 html
     for f in PAGES_DIR.rglob("*.html"):
-        rel = f.relative_to(Path("."))  # pages/a/x.html
+        rel = f.relative_to(Path("."))          # pages/a/x.html
         rel_posix = rel.as_posix()
+        stat = f.stat()
 
-        # 用 git 最后提交时间
-        mtime = git_last_commit_ts(rel)
         file_dict = {
             "path": rel_posix,
             "name": f.stem,
-            "mtime": mtime,
-            "mtime_str": gmt8_str(mtime),
+            "mtime_str": gmt8_str(stat.st_mtime),
         }
 
-        parts = f.relative_to(PAGES_DIR).parts
+        parts = f.relative_to(PAGES_DIR).parts  # e.g. ("a","x.html") or ("root.html",)
         if len(parts) == 1:
-            root_files.append(file_dict)
             files_by_folder.setdefault("__root__", []).append(file_dict)
         else:
             top = parts[0]
             files_by_folder.setdefault(top, []).append(file_dict)
 
     folders.sort()
-    root_files.sort(key=lambda x: x["name"].lower())
-
+    # 默认按名称排一下
     for k in files_by_folder:
         files_by_folder[k].sort(key=lambda x: x["name"].lower())
 
-    return folders, root_files, files_by_folder
+    return folders, files_by_folder
 
 
-def build_index(folders, root_files, files_by_folder):
+def build_index(folders, files_by_folder):
     gmt8 = timezone(timedelta(hours=8))
     now_gmt8 = datetime.now(gmt8).strftime("%Y-%m-%d %H:%M GMT+8")
 
@@ -101,7 +76,6 @@ def build_index(folders, root_files, files_by_folder):
   <style>
     :root {{
       --bg: #0b0f17;
-      --bg-soft: #111827;
       --card: rgba(17, 24, 39, 0.9);
       --card-hover: rgba(31, 41, 55, 0.95);
       --text: #e5e7eb;
@@ -248,10 +222,8 @@ def build_index(folders, root_files, files_by_folder):
     <span style="flex:1"></span>
 
     <span class="chip">排序</span>
-    <button class="btn active" id="sortNameBtn">名称</button>
-    <button class="btn" id="sortTimeBtn">修改时间</button>
-    <button class="btn active" id="sortAscBtn">升序</button>
-    <button class="btn" id="sortDescBtn">降序</button>
+    <button class="btn active" id="sortAscBtn">名称升序</button>
+    <button class="btn" id="sortDescBtn">名称降序</button>
     <button class="btn" id="backBtn" style="display:none;">返回上层</button>
   </div>
 
@@ -265,17 +237,14 @@ def build_index(folders, root_files, files_by_folder):
 <script>
 const DATA = {data_json};
 
-let currentFolder = "__root__";
-let sortKey = "name";   // "name" | "mtime"
-let sortDir = "asc";    // "asc" | "desc"
+let currentFolder = "__root__"; // "__root__" 表示顶层
+let sortDir = "asc";            // "asc" | "desc"
 
 const listEl = document.getElementById("list");
 const breadcrumbEl = document.getElementById("breadcrumb");
 const countChipEl = document.getElementById("countChip");
 const backBtn = document.getElementById("backBtn");
 
-const sortNameBtn = document.getElementById("sortNameBtn");
-const sortTimeBtn = document.getElementById("sortTimeBtn");
 const sortAscBtn = document.getElementById("sortAscBtn");
 const sortDescBtn = document.getElementById("sortDescBtn");
 
@@ -314,7 +283,10 @@ function renderFolder(folderName) {{
   breadcrumbEl.textContent = "pages/" + folderName + "/";
 
   const files = (DATA.filesByFolder && DATA.filesByFolder[folderName]) || [];
-  const entries = files.map(f => ({{ type: "file", ...f }}));
+  const entries = files.map(f => ({{
+    type: "file",
+    ...f
+  }}));
 
   renderEntries(entries);
 }}
@@ -324,17 +296,11 @@ function renderEntries(entries) {{
   let files = entries.filter(e => e.type === "file");
 
   files.sort((a,b) => {{
-    let va = a[sortKey];
-    let vb = b[sortKey];
-    if (sortKey === "name") {{
-      va = (va || "").toLowerCase();
-      vb = (vb || "").toLowerCase();
-      if (va < vb) return sortDir === "asc" ? -1 : 1;
-      if (va > vb) return sortDir === "asc" ?  1 : -1;
-      return 0;
-    }} else {{
-      return sortDir === "asc" ? (va - vb) : (vb - va);
-    }}
+    const va = (a.name || "").toLowerCase();
+    const vb = (b.name || "").toLowerCase();
+    if (va < vb) return sortDir === "asc" ? -1 : 1;
+    if (va > vb) return sortDir === "asc" ?  1 : -1;
+    return 0;
   }});
 
   const finalList = folders.concat(files);
@@ -356,7 +322,6 @@ function renderEntries(entries) {{
   <a class="card-link" href="${{escapeHtml(e.path)}}" title="${{escapeHtml(e.path)}}">
     <span class="card-title">📄 ${{escapeHtml(e.name)}}</span>
     <span class="card-meta">${{escapeHtml(e.path)}}</span>
-    <span class="card-meta">修改时间：${{escapeHtml(e.mtime_str)}}</span>
   </a>
 </li>`;
     }}
@@ -372,18 +337,6 @@ function escapeHtml(s) {{
     .replaceAll("'","&#39;");
 }}
 
-sortNameBtn.onclick = () => {{
-  sortKey = "name";
-  setActive(sortNameBtn, true);
-  setActive(sortTimeBtn, false);
-  rerender();
-}};
-sortTimeBtn.onclick = () => {{
-  sortKey = "mtime";
-  setActive(sortNameBtn, false);
-  setActive(sortTimeBtn, true);
-  rerender();
-}};
 sortAscBtn.onclick = () => {{
   sortDir = "asc";
   setActive(sortAscBtn, true);
@@ -396,6 +349,7 @@ sortDescBtn.onclick = () => {{
   setActive(sortDescBtn, true);
   rerender();
 }};
+
 backBtn.onclick = () => renderRoot();
 
 function rerender() {{
@@ -410,7 +364,7 @@ renderRoot();
 """
 
 if __name__ == "__main__":
-    folders, root_files, files_by_folder = collect_entries()
-    OUT_FILE.write_text(build_index(folders, root_files, files_by_folder), encoding="utf-8")
+    folders, files_by_folder = collect_entries()
+    OUT_FILE.write_text(build_index(folders, files_by_folder), encoding="utf-8")
     total_files = sum(len(v) for v in files_by_folder.values()) if files_by_folder else 0
     print(f"Generated {OUT_FILE} with {len(folders)} folders and {total_files} html files.")
