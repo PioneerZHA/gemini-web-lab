@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 import html
@@ -10,6 +11,25 @@ def gmt8_str(ts: float) -> str:
     gmt8 = timezone(timedelta(hours=8))
     return datetime.fromtimestamp(ts, gmt8).strftime("%Y-%m-%d %H:%M GMT+8")
 
+def git_last_commit_ts(file_path: Path) -> float:
+    """
+    返回该文件在 git 中最后一次提交的时间戳（秒）。
+    若 git 不可用或文件未提交过，则退回到文件系统 mtime。
+    """
+    try:
+        # 使用 posix 路径以兼容 Git
+        rel = file_path.as_posix()
+        out = subprocess.check_output(
+            ["git", "log", "-1", "--format=%ct", "--", rel],
+            stderr=subprocess.DEVNULL,
+            text=True
+        ).strip()
+        if out:
+            return float(out)
+    except Exception:
+        pass
+    return file_path.stat().st_mtime
+
 def collect_entries():
     """
     返回：
@@ -17,6 +37,7 @@ def collect_entries():
     - root_files: pages/ 顶层 html 文件
     - files_by_folder: { "a": [file_dict, ...], "b": [...], "__root__": [...] }
       file_dict: {path, name, mtime, mtime_str}
+      这里 mtime 使用 git 最后提交时间
     """
     folders = []
     root_files = []
@@ -32,12 +53,11 @@ def collect_entries():
 
     # 扫描所有 html
     for f in PAGES_DIR.rglob("*.html"):
-        rel = f.relative_to(Path("."))          # pages/a/x.html
+        rel = f.relative_to(Path("."))  # pages/a/x.html
         rel_posix = rel.as_posix()
 
-        # 文件元信息
-        stat = f.stat()
-        mtime = stat.st_mtime
+        # 用 git 最后提交时间
+        mtime = git_last_commit_ts(rel)
         file_dict = {
             "path": rel_posix,
             "name": f.stem,
@@ -45,8 +65,7 @@ def collect_entries():
             "mtime_str": gmt8_str(mtime),
         }
 
-        # 判断顶层归属
-        parts = f.relative_to(PAGES_DIR).parts  # e.g. ("a","x.html") or ("root.html",)
+        parts = f.relative_to(PAGES_DIR).parts
         if len(parts) == 1:
             root_files.append(file_dict)
             files_by_folder.setdefault("__root__", []).append(file_dict)
@@ -57,7 +76,6 @@ def collect_entries():
     folders.sort()
     root_files.sort(key=lambda x: x["name"].lower())
 
-    # 每个文件夹内文件默认按名称排一下（前端还可切换）
     for k in files_by_folder:
         files_by_folder[k].sort(key=lambda x: x["name"].lower())
 
@@ -65,7 +83,6 @@ def collect_entries():
 
 
 def build_index(folders, root_files, files_by_folder):
-    # 生成时间（页面底部显示）
     gmt8 = timezone(timedelta(hours=8))
     now_gmt8 = datetime.now(gmt8).strftime("%Y-%m-%d %H:%M GMT+8")
 
@@ -80,7 +97,7 @@ def build_index(folders, root_files, files_by_folder):
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>导航</title>
+  <title>导航站</title>
   <style>
     :root {{
       --bg: #0b0f17;
@@ -220,10 +237,10 @@ def build_index(folders, root_files, files_by_folder):
 </head>
 <body>
   <header>
-    <h1><a href="https://github.com/PioneerZHA/gemini-web-lab">GWL</a>导航页</h1>
+    <h1>导航页</h1>
     <div class="chip" id="countChip">0 个条目</div>
   </header>
-  <p class="subtitle">这些是我用 Gemini 生成的一些网页。</p>
+  <p class="subtitle">这些是我用 Gemini 生成的一些网页。先选文件夹，再浏览具体页面。</p>
 
   <div class="toolbar">
     <span class="chip" id="breadcrumb">pages/</span>
@@ -248,9 +265,9 @@ def build_index(folders, root_files, files_by_folder):
 <script>
 const DATA = {data_json};
 
-let currentFolder = "__root__"; // "__root__" 表示顶层
-let sortKey = "name";           // "name" | "mtime"
-let sortDir = "asc";            // "asc" | "desc"
+let currentFolder = "__root__";
+let sortKey = "name";   // "name" | "mtime"
+let sortDir = "asc";    // "asc" | "desc"
 
 const listEl = document.getElementById("list");
 const breadcrumbEl = document.getElementById("breadcrumb");
@@ -276,7 +293,6 @@ function renderRoot() {{
 
   const entries = [];
 
-  // 文件夹卡片
   for (const folder of folders) {{
     entries.push({{
       type: "folder",
@@ -285,7 +301,6 @@ function renderRoot() {{
     }});
   }}
 
-  // 顶层文件卡片
   for (const f of rootFiles) {{
     entries.push({{ type: "file", ...f }});
   }}
@@ -299,16 +314,12 @@ function renderFolder(folderName) {{
   breadcrumbEl.textContent = "pages/" + folderName + "/";
 
   const files = (DATA.filesByFolder && DATA.filesByFolder[folderName]) || [];
-  const entries = files.map(f => ({{
-    type: "file",
-    ...f
-  }}));
+  const entries = files.map(f => ({{ type: "file", ...f }}));
 
   renderEntries(entries);
 }}
 
 function renderEntries(entries) {{
-  // 排序仅对 file 生效，folder 保持在前
   const folders = entries.filter(e => e.type === "folder");
   let files = entries.filter(e => e.type === "file");
 
@@ -322,7 +333,6 @@ function renderEntries(entries) {{
       if (va > vb) return sortDir === "asc" ?  1 : -1;
       return 0;
     }} else {{
-      // mtime number
       return sortDir === "asc" ? (va - vb) : (vb - va);
     }}
   }});
@@ -362,7 +372,6 @@ function escapeHtml(s) {{
     .replaceAll("'","&#39;");
 }}
 
-// 事件绑定
 sortNameBtn.onclick = () => {{
   sortKey = "name";
   setActive(sortNameBtn, true);
