@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Server Monitor</title>
+    <style>
+        :root {
+            --neon-green: #00ff41;
+            --dark-green: #003b00;
+            --bg-black: #0a0a0a;
+            --terminal-font: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--neon-green);
+            font-family: var(--terminal-font);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        body::before {
+            content: " ";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 3px 100%;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 255, 65, 0.03);
+            opacity: 0;
+            z-index: 11;
+            pointer-events: none;
+            animation: scanline 8s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        .terminal-container {
+            width: 100%;
+            max-width: 500px;
+            border: 2px solid var(--neon-green);
+            padding: 30px 20px;
+            position: relative;
+            background: rgba(0, 0, 0, 0.8);
+            box-shadow: 0 0 20px var(--dark-green);
+            z-index: 5;
+        }
+
+        .terminal-container::before {
+            content: "[ STATUS CHECK ]";
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: var(--bg-black);
+            padding: 0 10px;
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+        }
+
+        .header {
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .ip-text {
+            font-size: 1.1rem;
+            word-break: break-all;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .status-box {
+            border: 1px dashed var(--neon-green);
+            padding: 25px;
+            margin-bottom: 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status-online {
+            border-style: solid;
+            box-shadow: inset 0 0 15px var(--dark-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: inset 0 0 5px var(--dark-green); }
+            50% { box-shadow: inset 0 0 20px var(--dark-green); }
+            100% { box-shadow: inset 0 0 5px var(--dark-green); }
+        }
+
+        #status-text {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            border-bottom: 1px solid var(--dark-green);
+            padding-bottom: 5px;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 1.2rem;
+            background: var(--neon-green);
+            margin-left: 5px;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .btn-refresh {
+            width: 100%;
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 15px;
+            font-family: var(--terminal-font);
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-refresh:hover {
+            background: var(--neon-green);
+            color: var(--bg-black);
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+        .btn-refresh:active {
+            transform: scale(0.98);
+        }
+
+        @media (max-width: 480px) {
+            .terminal-container {
+                padding: 20px 15px;
+            }
+            #status-text {
+                font-size: 1.4rem;
+            }
+            .info-row {
+                font-size: 0.8rem;
+            }
+        }
+
+        .loading-text::after {
+            content: "...";
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: ""; }
+            40% { content: "."; }
+            60% { content: ".."; }
+            80% { content: "..."; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="terminal-container">
+    <div class="header">
+        <div>> DEPLOYING_MONITOR_CMD</div>
+        <div class="ip-text">TARGET_HOST: vip.nj.frp.one:43395</div>
+    </div>
+
+    <div id="status-card" class="status-box">
+        <div id="status-text">INITIALIZING</div>
+        <div id="data-area">
+            <div class="info-row">
+                <span>SYSTEM_STATE:</span>
+                <span id="state-val" class="loading-text">SCANNING</span>
+            </div>
+            <div id="details">
+            </div>
+        </div>
+    </div>
+
+    <button class="btn-refresh" onclick="checkServer()">REFRESH</button>
+
+    <div style="margin-top: 20px; font-size: 0.7rem; opacity: 0.5; text-align: center;">
+        LAST_UPDATE: <span id="timestamp">N/A</span>
+    </div>
+</div>
+
+<script>
+    const SERVER_ADDR = 'vip.nj.frp.one:43395';
+    const statusCard = document.getElementById('status-card');
+    const statusText = document.getElementById('status-text');
+    const stateVal = document.getElementById('state-val');
+    const details = document.getElementById('details');
+    const timestamp = document.getElementById('timestamp');
+
+    async function checkServer() {
+        statusText.innerText = "PINGING...";
+        stateVal.innerText = "SCANNING";
+        stateVal.className = "loading-text";
+        statusCard.classList.remove('status-online');
+        details.innerHTML = '';
+
+        try {
+            const res = await fetch(`https://api.mcsrvstat.us/2/${SERVER_ADDR}`);
+            const data = await res.json();
+            
+            const now = new Date();
+            timestamp.innerText = now.toLocaleTimeString();
+
+            if (data.online) {
+                statusCard.classList.add('status-online');
+                statusText.innerText = "ONLINE";
+                stateVal.innerText = "ACTIVE";
+                stateVal.className = "";
+                
+                details.innerHTML = `
+                    <div class="info-row">
+                        <span>ACTIVE_USERS:</span>
+                        <span>${data.players.online} / ${data.players.max}</span>
+                    </div>
+                    <div class="info-row">
+                        <span>VERSION:</span>
+                        <span>${data.version || 'UNKNOWN'}</span>
+                    </div>
+                    <div class="info-row" style="color:rgba(0,255,65,0.5); font-size:0.7rem; border:none">
+                        <span>MSG:</span>
+                        <span>${data.motd?.clean[0] || 'NULL'}</span>
+                    </div>
+                `;
+            } else {
+                statusText.innerText = "OFFLINE";
+                stateVal.innerText = "UNREACHABLE";
+                stateVal.className = "";
+                details.innerHTML = `<div style="color: #ff0000; margin-top: 10px; font-size: 0.8rem;">[ERR] CONNECTION_TIMEOUT</div>`;
+            }
+        } catch (e) {
+            statusText.innerText = "ERROR";
+            stateVal.innerText = "API_FAILURE";
+            details.innerHTML = `<div style="color: #ff0000;">[ERR] Cannot reach API sever</div>`;
+        }
+    }
+
+    checkServer();
+    
+    setInterval(checkServer, 60000);
+</script>
+
+</body>
+</html>
