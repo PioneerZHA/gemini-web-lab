@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原神下载</title>
+    <script>
+        (function() {
+            var ua = navigator.userAgent.toLowerCase();
+            var url;
+
+            if (/android|adr/i.test(ua)) {
+                url = "https://ys-api.mihoyo.com/event/download_porter/link/ys_cn/official/android_backup319";
+            } else if (/iphone|ipad|ipod|mac/i.test(ua)) {
+                url = "https://apps.apple.com/cn/app/%E5%8E%9F%E7%A5%9E-%E7%A9%BA%E6%9C%88%E4%B9%8B%E6%AD%8C/id1467190251";
+            } else if (/windows|linux/i.test(ua)) {
+                url = "https://ys-api.mihoyo.com/event/download_porter/link/ys_cn/official/pc_default";
+            } else {
+                url = "https://ys.mihoyo.com/main/download";
+            }
+
+            window.location.href = url;
+        })();
+    </script>
+</head>
+<body>
+    <p>正在检测设备类型并跳转至对应下载页面...</p>
+    <p>如果未自动跳转，请<a id="fallback" href="https://ys.mihoyo.com/main/download">点击这里</a></p>
+    <script>
+        var ua = navigator.userAgent.toLowerCase();
+        var fb = document.getElementById("fallback");
+        if (/android/i.test(ua)) fb.href = "https://ys-api.mihoyo.com/event/download_porter/link/ys_cn/official/android_backup319";
+        else if (/iphone|ipad|ipod|mac/i.test(ua)) fb.href = "https://apps.apple.com/cn/app/%E5%8E%9F%E7%A5%9E-%E7%A9%BA%E6%9C%88%E4%B9%8B%E6%AD%8C/id1467190251";
+        else if (/windows|linux/i.test(ua)) fb.href = "https://ys-api.mihoyo.com/event/download_porter/link/ys_cn/official/pc_default";
+    </script>
+</body>
+</html>
