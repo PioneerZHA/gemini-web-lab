@@ -17,15 +17,13 @@
     :root {
       color-scheme: dark;
       --paper: #e9d3a0;
-      --ink: #17150f;
-      --muted: rgba(255, 255, 255, 0.66);
+      --muted: rgba(255, 255, 255, 0.68);
       --line: rgba(255, 255, 255, 0.14);
       --glass: rgba(17, 20, 19, 0.72);
       --shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
     }
 
     * { box-sizing: border-box; }
-
     html, body { min-height: 100%; }
 
     body {
@@ -55,7 +53,7 @@
       inset: 0;
       z-index: -1;
       pointer-events: none;
-      opacity: 0.2;
+      opacity: 0.18;
       background-image:
         radial-gradient(circle at 20% 10%, rgba(255,255,255,0.25) 0 1px, transparent 1.5px),
         radial-gradient(circle at 70% 60%, rgba(255,255,255,0.16) 0 1px, transparent 1.5px);
@@ -117,7 +115,7 @@
     }
 
     .eyebrow {
-      margin: 0 0 22px;
+      margin: 0 0 20px;
       color: var(--paper);
       font-size: 12px;
       font-weight: 700;
@@ -152,73 +150,38 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px 18px;
-      margin-bottom: 28px;
+      margin-bottom: 34px;
       color: var(--muted);
       font-size: 13px;
     }
 
-    .intro {
-      margin: 0 0 30px;
-      max-width: 39em;
-      color: rgba(255,255,255,0.82);
-      font-size: 15px;
-      line-height: 1.8;
-    }
-
     .platforms {
-      display: grid;
-      gap: 12px;
+      display: flex;
+      align-items: center;
+      gap: 28px;
     }
 
     .platform {
-      min-height: 58px;
-      padding: 0 19px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 18px;
-      color: #fff;
+      justify-content: center;
       text-decoration: none;
-      background: rgba(255,255,255,0.06);
-      transition: transform 180ms ease, background 180ms ease, border-color 180ms ease;
+      transition: transform 180ms ease, opacity 180ms ease;
+      opacity: 0.92;
       -webkit-tap-highlight-color: transparent;
     }
 
     .platform:hover,
     .platform:focus-visible {
-      transform: translateY(-2px);
-      background: rgba(255,255,255,0.11);
-      border-color: rgba(255,255,255,0.25);
+      transform: translateY(-2px) scale(1.02);
+      opacity: 1;
       outline: none;
     }
 
-    .platform strong {
+    .platform img {
       display: block;
-      font-size: 15px;
-      font-weight: 650;
-    }
-
-    .platform small {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .arrow {
-      font-size: 22px;
-      line-height: 1;
-      opacity: 0.7;
-    }
-
-    footer {
-      margin-top: 24px;
-      color: rgba(255,255,255,0.42);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
+      height: 50px;
+      width: auto;
     }
 
     @media (max-width: 720px) {
@@ -228,6 +191,8 @@
       .art { min-height: auto; aspect-ratio: 1 / 1; }
       .content { padding: 30px 24px 34px; }
       h1 { font-size: clamp(48px, 16vw, 72px); }
+      .platforms { gap: 22px; }
+      .platform img { height: 46px; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -247,7 +212,7 @@
         </div>
 
         <section class="content">
-          <p class="eyebrow">A listening page</p>
+          <p class="eyebrow">倾情推荐</p>
           <h1>The<br />Mountain</h1>
           <p class="artist">Gorillaz</p>
 
@@ -259,22 +224,16 @@
             <span>1 hr 6 min</span>
           </div>
 
-          <p class="intro">
-            一张关于失去、转变与继续前行的专辑。选择你常用的平台，进入搜索结果后即可收听。
-          </p>
-
           <nav class="platforms" aria-label="音乐平台">
             <a
               class="platform"
               href="https://y.qq.com/n/ryqq/search?w=Gorillaz%20The%20Mountain&t=album"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="在 QQ 音乐中搜索 The Mountain"
+              title="QQ 音乐"
             >
-              <span>
-                <strong>QQ 音乐</strong>
-                <small>在 QQ 音乐中查找专辑</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
+              <img src="qqmusic-white.svg" alt="QQ 音乐" />
             </a>
 
             <a
@@ -282,16 +241,12 @@
               href="https://music.163.com/#/search/m/?s=Gorillaz%20The%20Mountain&type=10"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="在 网易云音乐 中搜索 The Mountain"
+              title="网易云音乐"
             >
-              <span>
-                <strong>网易云音乐</strong>
-                <small>在网易云音乐中查找专辑</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
+              <img src="netease-white.svg" alt="网易云音乐" />
             </a>
           </nav>
-
-          <footer>Shared for listening · No ads · No tracking</footer>
         </section>
       </div>
     </article>
