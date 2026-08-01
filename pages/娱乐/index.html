@@ -2,20 +2,28 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <meta name="theme-color" content="#c49b55" />
 
   <title>The Mountain — Gorillaz</title>
-  <meta name="description" content="Gorillaz 第九张录音室专辑《The Mountain》。选择你常用的音乐平台收听。" />
+
+  <meta
+    name="description"
+    content="Gorillaz 专辑《The Mountain》收听页面。"
+  />
 
   <meta property="og:type" content="music.album" />
   <meta property="og:title" content="The Mountain — Gorillaz" />
-  <meta property="og:description" content="选择你常用的音乐平台收听。" />
+  <meta property="og:description" content="选择音乐平台收听。" />
   <meta property="og:image" content="cover.webp" />
 
   <style>
     :root {
       color-scheme: dark;
+
       --paper: #e9d3a0;
       --muted: rgba(255, 255, 255, 0.68);
       --line: rgba(255, 255, 255, 0.14);
@@ -23,40 +31,75 @@
       --shadow: 0 28px 80px rgba(0, 0, 0, 0.5);
     }
 
-    * { box-sizing: border-box; }
-    html, body { min-height: 100%; }
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+    }
 
     body {
       margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-        "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      color: #fff;
-      background: #111;
+
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "PingFang SC",
+        "Hiragino Sans GB",
+        "Microsoft YaHei",
+        sans-serif;
+
+      color: #ffffff;
+      background: #111111;
       overflow-x: hidden;
     }
 
     body::before {
       content: "";
+
       position: fixed;
       inset: -8vh -8vw;
       z-index: -2;
+
       background:
-        linear-gradient(180deg, rgba(5, 8, 8, 0.12), rgba(5, 8, 8, 0.86)),
+        linear-gradient(
+          180deg,
+          rgba(5, 8, 8, 0.12),
+          rgba(5, 8, 8, 0.86)
+        ),
         url("cover.webp") center / cover no-repeat;
+
       filter: blur(30px) saturate(0.82);
       transform: scale(1.08);
     }
 
     body::after {
       content: "";
+
       position: fixed;
       inset: 0;
       z-index: -1;
+
       pointer-events: none;
       opacity: 0.18;
+
       background-image:
-        radial-gradient(circle at 20% 10%, rgba(255,255,255,0.25) 0 1px, transparent 1.5px),
-        radial-gradient(circle at 70% 60%, rgba(255,255,255,0.16) 0 1px, transparent 1.5px);
+        radial-gradient(
+          circle at 20% 10%,
+          rgba(255, 255, 255, 0.25) 0 1px,
+          transparent 1.5px
+        ),
+        radial-gradient(
+          circle at 70% 60%,
+          rgba(255, 255, 255, 0.16) 0 1px,
+          transparent 1.5px
+        );
+
       background-size: 11px 11px, 17px 17px;
       mix-blend-mode: soft-light;
     }
@@ -64,31 +107,45 @@
     main {
       width: min(100% - 32px, 940px);
       min-height: 100svh;
+
       margin: 0 auto;
-      padding: max(28px, env(safe-area-inset-top)) 0 max(28px, env(safe-area-inset-bottom));
+
+      padding:
+        max(28px, env(safe-area-inset-top))
+        0
+        max(28px, env(safe-area-inset-bottom));
+
       display: grid;
       place-items: center;
     }
 
     .card {
       width: 100%;
+
+      overflow: hidden;
+
       border: 1px solid var(--line);
       border-radius: 30px;
-      overflow: hidden;
+
       background: var(--glass);
       box-shadow: var(--shadow);
+
       backdrop-filter: blur(22px);
       -webkit-backdrop-filter: blur(22px);
     }
 
     .layout {
-      display: grid;
-      grid-template-columns: minmax(280px, 0.92fr) minmax(320px, 1.08fr);
       min-height: 590px;
+
+      display: grid;
+      grid-template-columns:
+        minmax(280px, 0.92fr)
+        minmax(320px, 1.08fr);
     }
 
     .art {
       position: relative;
+
       min-height: 520px;
       background: #171712;
     }
@@ -96,19 +153,28 @@
     .art img {
       width: 100%;
       height: 100%;
+
       display: block;
       object-fit: cover;
     }
 
     .art::after {
       content: "";
+
       position: absolute;
       inset: 0;
-      background: linear-gradient(180deg, transparent 55%, rgba(0,0,0,0.26));
+
+      background:
+        linear-gradient(
+          180deg,
+          transparent 55%,
+          rgba(0, 0, 0, 0.26)
+        );
     }
 
     .content {
       padding: clamp(30px, 5vw, 58px);
+
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -116,25 +182,35 @@
 
     .eyebrow {
       margin: 0 0 20px;
+
       color: var(--paper);
+
       font-size: 12px;
       font-weight: 700;
+
       letter-spacing: 0.22em;
-      text-transform: uppercase;
     }
 
     h1 {
       margin: 0;
-      font-family: Georgia, "Times New Roman", serif;
+
+      font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
       font-size: clamp(44px, 8vw, 78px);
       font-weight: 500;
+
       line-height: 0.92;
       letter-spacing: -0.055em;
     }
 
     .artist {
       margin: 15px 0 0;
+
       color: var(--muted);
+
       font-size: 17px;
       letter-spacing: 0.04em;
     }
@@ -142,111 +218,200 @@
     .rule {
       width: 100%;
       height: 1px;
+
       margin: 30px 0 24px;
+
       background: var(--line);
     }
 
     .meta {
+      margin-bottom: 34px;
+
       display: flex;
       flex-wrap: wrap;
+      justify-content: center;
+
       gap: 8px 18px;
-      margin-bottom: 34px;
+
       color: var(--muted);
       font-size: 13px;
     }
 
     .platforms {
+      width: 100%;
+
       display: flex;
       align-items: center;
-      gap: 28px;
+      justify-content: center;
+
+      gap: 30px;
     }
 
     .platform {
+      width: 64px;
+      height: 64px;
+
       display: inline-flex;
       align-items: center;
       justify-content: center;
+
+      color: #ffffff;
       text-decoration: none;
-      transition: transform 180ms ease, opacity 180ms ease;
-      opacity: 0.92;
+
+      opacity: 0.9;
+
+      transition:
+        transform 180ms ease,
+        opacity 180ms ease;
+
       -webkit-tap-highlight-color: transparent;
     }
 
     .platform:hover,
     .platform:focus-visible {
-      transform: translateY(-2px) scale(1.02);
+      transform: translateY(-2px) scale(1.05);
       opacity: 1;
       outline: none;
     }
 
     .platform img {
+      width: 48px;
+      height: 48px;
+
       display: block;
-      height: 50px;
-      width: auto;
+      object-fit: contain;
     }
 
     @media (max-width: 720px) {
-      main { width: min(100% - 22px, 540px); }
-      .card { border-radius: 24px; }
-      .layout { grid-template-columns: 1fr; }
-      .art { min-height: auto; aspect-ratio: 1 / 1; }
-      .content { padding: 30px 24px 34px; }
-      h1 { font-size: clamp(48px, 16vw, 72px); }
-      .platforms { gap: 22px; }
-      .platform img { height: 46px; }
+      main {
+        width: min(100% - 22px, 540px);
+      }
+
+      .card {
+        border-radius: 24px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .art {
+        min-height: auto;
+        aspect-ratio: 1 / 1;
+      }
+
+      .content {
+        padding: 30px 24px 34px;
+      }
+
+      h1 {
+        font-size: clamp(48px, 16vw, 72px);
+      }
+
+      .platforms {
+        gap: 24px;
+      }
+
+      .platform {
+        width: 58px;
+        height: 58px;
+      }
+
+      .platform img {
+        width: 44px;
+        height: 44px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after {
+      *,
+      *::before,
+      *::after {
         scroll-behavior: auto !important;
         transition: none !important;
       }
     }
   </style>
 </head>
+
 <body>
   <main>
-    <article class="card" aria-label="Gorillaz 专辑 The Mountain">
+    <article
+      class="card"
+      aria-label="Gorillaz 专辑 The Mountain"
+    >
       <div class="layout">
+
         <div class="art">
-          <img src="cover.webp" alt="Gorillaz《The Mountain》专辑封面" />
+          <img
+            src="cover.webp"
+            alt="Gorillaz《The Mountain》专辑封面"
+          />
         </div>
 
         <section class="content">
+
           <p class="eyebrow">倾情推荐</p>
-          <h1>The<br />Mountain</h1>
+
+          <h1>
+            The<br />
+            Mountain
+          </h1>
+
           <p class="artist">Gorillaz</p>
 
           <div class="rule"></div>
 
-          <div class="meta" aria-label="专辑信息">
+          <div
+            class="meta"
+            aria-label="专辑信息"
+          >
             <span>2026</span>
             <span>15 tracks</span>
             <span>1 hr 6 min</span>
           </div>
 
-          <nav class="platforms" aria-label="音乐平台">
+          <nav
+            class="platforms"
+            aria-label="音乐平台"
+          >
+
             <a
               class="platform"
+
               href="https://y.qq.com/n/ryqq/search?w=Gorillaz%20The%20Mountain&t=album"
+
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="在 QQ 音乐中搜索 The Mountain"
+
+              aria-label="在 QQ 音乐中收听 The Mountain"
               title="QQ 音乐"
             >
-              <img src="qqmusic-white.svg" alt="QQ 音乐" />
+              <img
+                src="qqmusic-white.svg"
+                alt="QQ 音乐"
+              />
             </a>
 
             <a
               class="platform"
+
               href="https://music.163.com/#/search/m/?s=Gorillaz%20The%20Mountain&type=10"
+
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="在 网易云音乐 中搜索 The Mountain"
+
+              aria-label="在网易云音乐中收听 The Mountain"
               title="网易云音乐"
             >
-              <img src="netease-white.svg" alt="网易云音乐" />
+              <img
+                src="netease-white.svg"
+                alt="网易云音乐"
+              />
             </a>
+
           </nav>
+
         </section>
       </div>
     </article>
