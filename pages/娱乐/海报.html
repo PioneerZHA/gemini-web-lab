@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#c49b55" />
+  <title>The Mountain — Poster</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --paper: #e8d5a4;
+      --paper-soft: rgba(232, 213, 164, 0.86);
+      --muted: rgba(255, 255, 255, 0.72);
+      --line: rgba(255, 255, 255, 0.12);
+      --glass: rgba(14, 16, 15, 0.42);
+      --glass-strong: rgba(17, 20, 19, 0.72);
+      --shadow: 0 28px 90px rgba(0, 0, 0, 0.48);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family:
+        ui-sans-serif,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+      background: #0e0f0f;
+      color: #ffffff;
+      overflow: hidden;
+    }
+
+    .poster {
+      position: relative;
+      min-height: 100svh;
+      isolation: isolate;
+      background: #111111;
+    }
+
+    .poster::before {
+      content: "";
+      position: absolute;
+      inset: -8vh -8vw;
+      z-index: -2;
+      background:
+        linear-gradient(
+          180deg,
+          rgba(7, 9, 10, 0.12),
+          rgba(7, 9, 10, 0.78)
+        ),
+        url("cover.webp") center / cover no-repeat;
+      filter: blur(34px) saturate(0.8);
+      transform: scale(1.08);
+    }
+
+    .poster::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.16;
+      background-image:
+        radial-gradient(circle at 20% 12%, rgba(255,255,255,0.20) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 78% 72%, rgba(255,255,255,0.12) 0 1px, transparent 1.5px);
+      background-size: 12px 12px, 18px 18px;
+      mix-blend-mode: soft-light;
+    }
+
+    .frame {
+      min-height: 100svh;
+      padding:
+        max(28px, env(safe-area-inset-top))
+        clamp(22px, 4vw, 54px)
+        max(28px, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: center;
+      padding-top: clamp(4px, 2vh, 20px);
+    }
+
+    .cover-wrap {
+      width: min(58vw, 450px);
+      aspect-ratio: 1 / 1;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.045);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transform: rotate(-3deg);
+    }
+
+    .cover-wrap img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border-radius: 22px;
+    }
+
+    .bottom {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: end;
+      gap: 24px;
+    }
+
+    .text {
+      max-width: 640px;
+      padding-bottom: 4px;
+    }
+
+    .eyebrow {
+      margin: 0 0 18px;
+      color: var(--paper);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.34em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(64px, 11vw, 148px);
+      font-weight: 500;
+      line-height: 0.92;
+      letter-spacing: -0.055em;
+      text-wrap: balance;
+    }
+
+    .artist {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 22px);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .qr {
+      justify-self: end;
+    }
+
+    .qr-shell {
+      width: clamp(132px, 18vw, 196px);
+      padding: 14px;
+      border-radius: 24px;
+      background: var(--paper-soft);
+      box-shadow:
+        0 18px 45px rgba(0, 0, 0, 0.22),
+        inset 0 1px 0 rgba(255,255,255,0.22);
+    }
+
+    .qr-shell img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .frame {
+        gap: 20px;
+      }
+
+      .top {
+        justify-content: flex-start;
+      }
+
+      .cover-wrap {
+        width: min(72vw, 360px);
+        transform: rotate(-2deg);
+      }
+
+      .bottom {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .qr {
+        margin-left: auto;
+      }
+
+      .qr-shell {
+        width: 150px;
+        padding: 12px;
+      }
+
+      h1 {
+        font-size: clamp(60px, 18vw, 110px);
+      }
+
+      .artist {
+        font-size: 15px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="poster">
+    <section class="frame">
+      <div class="top">
+        <div class="cover-wrap">
+          <img src="cover.webp" alt="The Mountain album cover" />
+        </div>
+      </div>
+
+      <div class="bottom">
+        <div class="text">
+          <p class="eyebrow">Recommended</p>
+          <h1>The<br />Mountain</h1>
+          <p class="artist">Gorillaz</p>
+        </div>
+
+        <div class="qr">
+          <div class="qr-shell">
+            <img
+              src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAApAAAAKQCAYAAAAotUpQAAAR9klEQVR4nO3YsY0rO5BA0dVikpAnQ/lHJEOewuhNYe+rDxSIPscXWE2yZy76cV3X/wAAwP/X/24PAADAWQQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAAJK/7QHer+e1PQP/7vP9PbZn2DS9v9v7t/3+TZ9/e/6pu5//1Pb92T6/qdPP/+62758vkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAADJ3/YAU5/v77E9w8ner+d18vrT899e/3Tb+z91+vzb62/f/+3nv7vt8z/d6ffXF0gAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCA5G97gG3v1/PanmHi8/09tmc42XT/tu/P3c//9Oc//f5M55+uv33+p5/ftu39mzp9/6d8gQQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBI/rYHgIn363ltrv/5/h6b62+b7v90/7bPf2r7+bf3b3v9qe3zg02+QAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkf9sDcG+f7+8x+f379bxOXn9qOv/2+tvnN3X38z/9/IB/5wskAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQPK3PcC2z/f32J6Bf3f6+U3nf7+e1381y4bt85vun/O79/kxY//P5gskAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQPK3PcDU+/W8tmfg303P7/P9Pay/t/7U9vOfzvmf/f6dbvv+sMsXSAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIDkcV3X9gzc2Pv1XL2An+/vsbn+1HT/Tn/+bdv7v73+1Onzw535AgkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQPK7rWh3g/XqOBvh8f4//apY72t7/7fXvbrr/U9vnt33/tvefmdPv79Tdn39qe/+mfIEEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASB7XdW3PMPJ+PVcf4PP9PSa/P31+ZrbPf8r9mTn9/Jm5+/tz9/t/+vn7AgkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQPK7r2p7haO/X0wYu+nx/j831t89/+/mZ2b4/U6ffv9P3f2p6ftv7d/r8U9vvny+QAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAMnf9gCn+3x/j8nv36/n9V/N8i+m82/b3r8p+z+z/f5N198+/+3zO932/Zvavv9Td59/my+QAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAMnjuq7tGVa9X8/RBny+v8d/NcuG6fNPTfdv+/xO3z9mtu/f6U7fv9Pf/7vPf/r92Z7fF0gAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCA5G97gPfreW2u//n+HpPfnz7/9vNv7990/e39m9pe//T9m9q+f1Onz393d3//pu5+/32BBAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEj+tgeY+nx/j8nv36/ndfL6099vm+4fM9v3d9v2/dt+/6fPv71/d7d9/lOn//2YOv38fIEEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASB7XdW3PMPJ+PY9+gM/395j8fvr82+tPbc8/Xf902+d/d6ffv7u/f6c///b8239/tvd/my+QAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAMnjuq7VAd6v52iAz/f32Fyfs03vz7a7vz+nn9/U9vlPbd8fzubv1y5fIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAACSx3Vd2zOMvF/P0QN8vr/Hyeufbnv/puvf3en39/T7t73+1Onzn257/61/9t9PXyABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAkr/tAaY+399je4ZN79fz2lx/uv/T30+f3/pnr3932/u//fdnavv5737/t/fv7utP+QIJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgERAAgCQCEgAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkDyu61od4P167g4w9Pn+HpPfT59/uv42z3/v5z/d9t+v7fM//f5un9+27f2fuvv9257fF0gAABIBCQBAIiABAEgEJAAAiYAEACARkAAAJAISAIBEQAIAkAhIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCA5HFd1+oA79dzNMDn+3v8V7P8i+35p+tPbe//1N3P7+62z+/u78/pts9ve/+3359t2+e/zRdIAAASAQkAQCIgAQBIBCQAAImABAAgEZAAACQCEgCAREACAJAISAAAEgEJAEAiIAEASAQkAACJgAQAIBGQAAAkAhIAgORve4Cp9+t5TX7/+f4em7/fnn/b9vNvn9/U9vmf/vzb809tvz9T2+tP98/+77r7+7/NF0gAABIBCQBA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"
+              alt="QR code"
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
